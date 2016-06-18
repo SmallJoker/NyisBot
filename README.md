@@ -7,4 +7,5 @@ as an answer to the previously entered chat command.
 
 License: BSD 3-Clause
 
-See file `COMAND_REFERENCE.txt` and `PLUGIN_API.txt` for further information about scripting
+In the file `PLUGIN_API.txt` you will find an explanation how 
+to write Lua scripts and a command reference of the helper scripts.
