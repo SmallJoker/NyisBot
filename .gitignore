@@ -1,0 +1,12 @@
+# Database files
+*.sqlite3
+*.db
+
+# Binary files
+*.exe
+*.dll
+
+# Other files
+help.txt
+*.wip.lua
+update.bat

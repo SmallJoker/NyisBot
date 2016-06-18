@@ -1,0 +1,172 @@
+ PLUGIN API FILE
+
+Table of contents: (Use the search function Ctrl+F)
+* API File notes
+* Function reference
+* Return values
+* Hello world 2
+* More functions
+* Using C
+
+
+ API File notes
+================
+< This line is a command input
+> This line is an output text
+Lua is case-sensitive, so "MonkeyFunc" is not "monkeyfunc"!
+
+
+ Function reference
+====================
+
+ Variables
+-----------
+L.online
+	^ Number of online players
+
+L.nick
+	^ Chatter's nickname
+
+L.hostmask
+	^ Chatter's hostmask
+
+
+ Functions
+-----------
+
+# misc_helpers.lua (automatically loaded)
+	dump(object)
+		^ Analyzes and outputs a table and its contents as a string
+
+	fromFancy("<formatted number>")
+		^ Formats ugly number to fancy ("1k" -> 1000, "1 m" -> 0.001)
+
+	toFancy(number)
+		^ Converts fancy number to ugly (1000 -> "1k", 0.001 -> "1m")
+
+	c("<text>")
+		^ Returns a for chat used, highlighted text value
+
+	getUserObject("<name>")
+		^ Searchs a currently online user in the channel (case insensitive)
+		^ Returns { nick=?, hostmask=? } or nil if not found
+
+	math.round(number, [digits])
+		^ Rounds the number
+		^ digits: Optional, describes the decimal digits
+
+	math.sign(number, [tolerance])
+		^ Gets the sign of a number
+		^ tolerance: Optional, must be a positive number
+
+	string:split("<delimiter>")
+		^ Splits a string into an array, using the delimiter character(s)
+
+	string:trim()
+		^ Removes beginning and tailing spaces
+
+	table.copy(table)
+		^ Copies a table to remove its reference
+
+
+# complex.lua (automatically loaded)
+	Complex([real], [imaginary])
+		^ Creates a new complex calculating class
+		^ real, imaginary: Optional, will be set to zero otherwise
+		:add(real, imaginary)
+		:add(Complex_object)
+		:addPolar(length, angle)
+			^ Adds polar value to the real and imaginary axis (degrees) [buggy!]
+		:addReal(amount)
+		:addImag(amount)
+		:length()
+			^ Length of the polar hypotenuse / absolute value
+		:angle()
+			^ Angle in the polar system (degrees)
+		:tostring()
+		:topolar()
+
+
+ Return values
+===============
+"return" does only output a chat message when it's called from the chat itself:
+	function getHello()
+		return "Hello world"
+	end
+< $ getHello()
+> ME: <no return text>
+< $ return getHello()
+> Hello world
+
+
+ Hello world 2
+===============
+Using "print" to output a text automatically:
+	function getHello()
+		return "Hello"
+	end
+	function sayHi()
+		-- Combine "Hello" and " world"
+		print(getHello() .." world")
+	end
+< $ sayHi()
+> Hello world
+
+Another (rather ugly) variant:
+	function sayHi()
+		-- Output "Hello" and "world" seperately
+		-- spaces in between are added autmatically
+		print("Hello")
+		print("world")
+	end
+< $ sayHi()
+> Hello world
+
+
+ More functions
+================
+This API file only contains the must-have functions to start scripting.
+See http://pastebin.com/raw/Bj15D8zs for further functions to use in your project.
+
+
+ Using C
+=========
+C modules can be loaded in Lua, which is executed by C#.
+So this has some speed loss and is only recommended for huge projects.
+
+Add the LuaJIT path to the include directories and use this template to start.
+
+#include "lua.h"
+#include "lauxlib.h"
+
+#ifdef _WIN32
+#  define EXPORT __declspec(dllexport)
+#else
+#  define EXPORT LUALIB_API
+#endif
+
+static int l_myCoolFunction(lua_State *L)
+{
+	// You can rename this function and copypaste it as much you want.
+	// Just don't forget to register it in "luaopen_<PLUGINNAME>_"
+
+	lua_pushinteger(L, 1234); // See Lua C reference for more functions
+	return 1; // Number of return values
+}
+
+static int luaopen_<PLUGINNAME>_(lua_State *L)
+{
+	lua_pushcfunction(L, l_myCoolFunction);
+	lua_setglobal(L, "myCoolFunction");
+	return 1;
+}
+
+EXPORT int luaopen_<PLUGINNAME>(lua_State *L)
+{
+	return luaopen_<PLUGINNAME>_(L);
+}
+
+EXPORT int luaopen_<PLUGINNAME>_safe(lua_State *L)
+{
+	return luaopen_LuaPlugin_(L);
+}
