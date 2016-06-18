@@ -1,4 +1,3 @@
-local require = P.x_loadlib
 local sqlite3 = require("lsqlite3")
 local db = sqlite3.open("quotes.sqlite3")
 local block_addquote = false

@@ -6,9 +6,9 @@ if not os.execute then
 end
 
 --{ READONLY TABLES
-local function protect(t) 
+local function protect(t)
 	return setmetatable({}, {
-			__index = t, 
+			__index = t,
 			__newindex = function(t, key, value)
 				error("Table is readonly")
 			end,
@@ -30,18 +30,17 @@ function dofile(arg)
 	assert(not string.find(arg, "\\"), "Blocked for security reasons.")
 	assert(not string.find(arg, "/"),  "Blocked for security reasons.")
 	assert(arg ~= "", "Invalid file name.")
-	
+
 	_dofile(arg)
 end
 
 local _require = require
 function require(arg)
 	assert(type(arg) == "string", "Argument #1: String expected.")
-	assert(not string.find(arg, "\\"), "Blocked for security reasons.")
-	assert(not string.find(arg, "/"),  "Blocked for security reasons.")
+	assert(debug.getinfo(2).source:sub(1, 1) == "@", "Blocked for security reasons.")
 	assert(arg ~= "", "Invalid file name.")
-	
-	_require(arg)
+
+	return _require(arg)
 end
 --} PROTECT INCLUDE FUNCTIONS
 
@@ -66,7 +65,6 @@ os.setlocale = nil
 
 coroutine = nil
 package = nil
-require = nil
 loadfile = nil
 loadstring = nil
 
@@ -128,7 +126,7 @@ local link_list = {
 	youtube		= "How-to-youtube: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 	["yes-sure"]= "Meh, yes sure, whatever. http://replygif.net/i/247.gif",
 	["("]		= ") https://xkcd.com/859/",
-	
+
 	["help.api"]	= "API reference page for this bot: http://pastebin.com/raw/rDAhBywU",
 	["help.ask"]	= "How to ask questions correctly: http://rurounijones.github.io/blog/2009/03/17/how-to-ask-for-help-on-irc/",
 	["help.irc"]	= "A short IRC command tutorial: http://pastebin.com/raw/MB50gxk6",
@@ -137,7 +135,7 @@ local link_list = {
 	["help.memo"]	= "Use "..c("/msg MemoServ SEND <user> <text>").." to send your message to <user>.",
 	["help.nick"]	= "Take a moment to read this tutorial: http://pastebin.com/raw/iHMFEq41",
 	["help.treeserv"]	= "List of commands: http://apeiron.no-ip.org:6112/treeserv.php?what=commands",
-	
+
 	["bot.leave"]	= "Kick this bot from your channel if you think it's not required anymore.",
 	["bot.lgame"]	= "The cheat game. Wikipedia article for fast readers: https://en.wikipedia.org/wiki/Cheat_%28game%29",
 	["bot.invite"]	= "To invite this bot into your channel, use the chat command "..c("/invite Nyisorn #channel")
@@ -153,7 +151,7 @@ function link(text)
 	elseif type(text) ~= "string" then
 		text = tostring(text)
 	end
-	
+
 	text = string.lower(text)
 	if text == "list" then
 		local text = ""
@@ -163,7 +161,7 @@ function link(text)
 		print(L.nick ..":".. text)
 		return
 	end
-	
+
 	if not link_list[text] then
 		local sensivity = string.len(text) / 3
 		for k,v in pairs(link_list) do
@@ -173,12 +171,12 @@ function link(text)
 			end
 		end
 	end
-	
+
 	if text == "giveaway" and string.lower(L.channel) == "#dontjoinitsatrap" then
 		print ("R U kidding me?")
 		return
 	end
-	
+
 	if not link_list[text] then
 		print(L.nick ..": Link keyword not found.")
 		return
@@ -189,7 +187,7 @@ end
 
 function sell(text)
 	assert(type(text) == "string", "Argument #1: String expected.")
-	
+
 	if math.random() < 0.167 then
 		print(text.." was thrown into the \x034fire\x0F. \x033Please wait...")
 		return
@@ -200,14 +198,14 @@ end
 -- Convert party ID or server IP to an agar.io link
 function agario(text)
 	assert(type(text) == "string", "Argument #1: String expected.")
-	
+
 	local base = "http://agar.io/"
 	local len = string.len(text)
 	if len == 5 then
 		print(base.."#"..text)
 		return
 	end
-	
+
 	local bpos, epos = string.find(text, "#")
 	if bpos then
 		local party = string.sub(text, bpos, len) -- #ABCDE
@@ -218,7 +216,7 @@ function agario(text)
 		print(base..party)
 		return
 	end
-	
+
 	bpos, epos = string.find(text, ":")
 	if bpos then
 		local address = string.sub(text, 1, bpos)
@@ -231,7 +229,7 @@ function agario(text)
 			print(L.nick ..": Invalid port number. Allowed range: 1 .. ~65500")
 			return
 		end
-		
+
 		local first_part = string.sub(text, 1, 3)
 		if first_part == "127" or first_part == "192" or first_part == "0.0" then
 			print(L.nick ..": 127.0.0.1 and 192.*.*.* are local network IP addresses. People outside your router network can not connect to it.")
@@ -258,7 +256,7 @@ end
 
 function adduser(nick, group)
 	assert(type(nick) == "string" and type(group) == "string", "Argument #1 and/or #2: String expected.")
-	
+
 	local object = getUserObject(nick)
 	if not object then
 		print(L.nick ..": Unknown nickname.")
@@ -269,7 +267,7 @@ end
 
 function remuser(nick, group)
 	assert(type(nick) == "string" and type(group) == "string", "Argument #1 and/or #2: String expected.")
-	
+
 	local object = getUserObject(nick)
 	if not object then
 		print(L.nick ..": Unknown nickname.")
@@ -284,7 +282,7 @@ function paperfold(height, thickness)
 	else
 		assert(type(height) == "number", "Argument #1: Number expected")
 	end
-	
+
 	if type(thickness) == "string" then
 		thickness = fromFancy(thickness, 2)
 	else
@@ -292,16 +290,16 @@ function paperfold(height, thickness)
 			thickness = 0.1E-3
 		end
 	end
-	
+
 	local step1 = height / thickness
-	
+
 	-- 0.1mm * 2^x = height
 	-- height / thickness = 2^x -> step1 = 2^x
 	-- log(step1) = log(2) * x
-	
+
 	local times = math.round(math.log(step1) / math.log(2))
 	local real_height = thickness * 2^times
-	print(L.nick..": Folding it ".. times .." times results in a ".. 
+	print(L.nick..": Folding it ".. times .." times results in a "..
 		toFancy(real_height) .." meter high pile of paper")
 end
 
@@ -315,7 +313,7 @@ function haystack(text)
 	local out = ""
 	local cmd = false
 	local depth = 0
-	
+
 	--        0        1        3          7
 	-- print2("print1(\"print2(\\\"print1(\\\\\\\"test\\\\\\\")\\\")")")
 	-- print1("print2(\"print1(\\\"test\\\")\")")
