@@ -41,8 +41,9 @@ L.hostmask
 	fromFancy("<formatted number>")
 		^ Formats ugly number to fancy ("1k" -> 1000, "1 m" -> 0.001)
 
-	toFancy(number)
+	toFancy(number, [digits])
 		^ Converts fancy number to ugly (1000 -> "1k", 0.001 -> "1m")
+		^ digits: Optional, describes the decimal digits
 
 	c("<text>")
 		^ Returns a for chat used, highlighted text value

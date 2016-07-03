@@ -93,7 +93,6 @@ dofile("complex.lua")
 local link_list = {
 	["69"]		= "https://docs.google.com/document/d/1-2D4dZH1G9x_kLQ-9YhV3YDmAhRRk7VsxHoCjSUScHk/",
 	address		= "What's your address? http://www.overclockers.com.au/image2.php?pic=images/newspics/29jan16/11.jpg",
-	agarmodwiki = "Server/Client implementations and bots can be found here: http://agar.gcommer.com/index.php?title=Main_Page",
 	amaze		= "Amazing! https://i.imgur.com/O8tFZ.gif",
 	applause	= "*CLAP* *CLAP* *CLAP* http://i.imgur.com/YiUe1r6.gif",
 	awaynick	= "Do NOT use away nicknames! http://sackheads.org/~bnaylor/spew/away_msgs.html",
@@ -102,6 +101,7 @@ local link_list = {
 	developers	= "The developers! http://www.youtube.com/watch?v=KMU0tzLwhbE",
 	dj			= "Every 15 minutes there are random giveaways to the people in #dontjoinitsatrap ! (You can join it by clicking on the channel name)",
 	dramatic	= "Dramatic situation! https://www.youtube.com/watch?v=y8Kyi0WNg40",
+	gemini		= "Yes, we all love him, thus invite him to your channel! :) http://i.imgur.com/g4KjEJf.png",
 	grammarnazi	= "Watch your grammar! http://memesvault.com/wp-content/uploads/No-Cat-Meme-26.jpg",
 	high5		= "High five! https://i.imgur.com/M0bWify.gif",
 	money		= "I have money. https://i.imgur.com/yLc4poE.gif",
@@ -127,7 +127,7 @@ local link_list = {
 	["yes-sure"]= "Meh, yes sure, whatever. http://replygif.net/i/247.gif",
 	["("]		= ") https://xkcd.com/859/",
 
-	["help.api"]	= "API reference page for this bot: http://pastebin.com/raw/rDAhBywU",
+	["help.api"]	= "Complete Lua plugin source: https://github.com/SmallJoker/NyisBot",
 	["help.ask"]	= "How to ask questions correctly: http://rurounijones.github.io/blog/2009/03/17/how-to-ask-for-help-on-irc/",
 	["help.irc"]	= "A short IRC command tutorial: http://pastebin.com/raw/MB50gxk6",
 	["help.lua"]	= "PIL reference: http://www.lua.org/pil/contents.html",
@@ -137,7 +137,6 @@ local link_list = {
 	["help.treeserv"]	= "List of commands: http://apeiron.no-ip.org:6112/treeserv.php?what=commands",
 
 	["bot.leave"]	= "Kick this bot from your channel if you think it's not required anymore.",
-	["bot.lgame"]	= "The cheat game. Wikipedia article for fast readers: https://en.wikipedia.org/wiki/Cheat_%28game%29",
 	["bot.invite"]	= "To invite this bot into your channel, use the chat command "..c("/invite Nyisorn #channel")
 }
 
@@ -300,7 +299,7 @@ function paperfold(height, thickness)
 	local times = math.round(math.log(step1) / math.log(2))
 	local real_height = thickness * 2^times
 	print(L.nick..": Folding it ".. times .." times results in a "..
-		toFancy(real_height) .." meter high pile of paper")
+		toFancy(real_height, 3) .." meter high pile of paper")
 end
 
 -- For the case when there's another Lua supporting bot
@@ -335,4 +334,19 @@ function haystack(text)
 		depth = depth - 1
 	end
 	print(out)
+end
+
+function decide(text)
+	assert(type(text) == "string", "Argument #1: String expected")
+	assert(string.find(text, '?'), "No question mark found!")
+	assert(string.len(text) > 8, "Too short question!")
+	
+	local rand = math.random()
+	if rand < 0.35 then
+		print(L.nick ..": Yes")
+	elseif rand < 0.7 then
+		print(L.nick ..": No")
+	else
+		print(L.nick ..": Maybe")
+	end
 end

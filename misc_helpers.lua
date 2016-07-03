@@ -147,21 +147,35 @@ function fromFancy(num, i)
 	return tonumber(num) or error("Unknown factor: "..last_char)
 end
 
-function toFancy(num, i)
+function toFancy(num, perc, i)
 	if not i then
 		i = 1
 	end
 	assert(type(num) == "number", "Argument #"..i..": Number expected.")
+	assert(type(num) == "nil" or type(num) == "number",
+			"Invalid type for 'perc': nil or number expected.")
 
 	if num >= 1 and num < 1000 then
+		if perc then
+			num = math.round(num, perc)
+		end
 		return tostring(num)
 	end
+
 	for i, v in ipairs(tech_sizes) do
-		if num >= v[2] and (#v < 3 or v[3]) then
-			return tostring(num / v[2])..v[1]
+		if num >= v[2] and (#v < 3 or v[3])
+				or i == #tech_sizes then
+			num = num / v[2]
+			if perc then
+				num = math.round(num, perc)
+				if num == 0 then
+					return "0"
+				end
+			end
+			return tostring(num)..v[1]
 		end
 	end
-	return tostring(num / tech_sizes[#tech_sizes][2]).."p"
+	error("Something went wrong :/")
 end
 
 --------------------------------------------------------------------------------
