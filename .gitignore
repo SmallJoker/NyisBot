@@ -7,6 +7,5 @@
 *.dll
 
 # Other files
-help.txt
 *.wip.lua
 update.bat

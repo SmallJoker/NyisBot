@@ -1,0 +1,345 @@
+Command reference for the IRC bot Nyisorn
+Written by Krock <mk939@ymail.com>
+
+Table of contents: (Use the search function Ctrl+F)
+* Lua commands
+	- Calculations
+	- Function calls
+	- External function calls
+	- Function list
+* Other commands
+* The cheat game
+	- Theory of the game
+	- Joining and leaving
+	- Cards on the stack
+	- Tricking the players
+	- Queens
+	- End of the game
+
+Main help channel: irc.rizon.net/#nimg_lobby
+Notice: Most of the commands work in the private chat aswell - Please don't spam the main channel.
+
+
+ Lua commands
+==============
+You can execute Lua scripts with following long prefix
+> $lua <code here>
+or with the short variant
+> $ <code here>
+
+To return a text, it would be
+> $ return "a text"
+
+Define and output a variable:
+> $ local msg = "Hello World"; return msg
+
+
+ Calculations
+--------------
+The math operations are the same as in other programming languages too.
+To calculate something, use the operations + - * / or any of the builtin math functions.
+Get a complete list of the builtin functions here: http://lua-users.org/wiki/MathLibraryTutorial
+
+> $ return (300*2)/0.4*math.pi
+
+
+ Function calls
+----------------
+By default, there are some functions you can call directly without having to do anything special.
+
+If you want to get all links which are stored in the bot, use this command:
+> $ link("list")
+The braces tell our Lua intepreter to call a function. The string "list" is an argument that is submitted to the function.
+
+There might be more arguments required, for the math.round function, as example.
+Use Lua to round a number and show 1 digit after the decimal point:
+> $ return math.round(12.34567, 1)
+
+See section "Function list" to see them all.
+
+
+ External function calls
+-------------------------
+Sometimes it's good to know if there are other things that can be used. For this,
+ check out the available Lua modules/scripts that can be included to the bot.
+> $ help()
+
+Now check out all functions inside that module.
+> $ help("noobgen.lua")
+
+Call the special Lua function "dofile" to include a file to your command to call a function inside the loaded module.
+> $ dofile("noobgen.lua") generate(2)
+
+
+ Function list
+---------------
+Functions of all added modules with their explanation.
+All asterisk (*) marked functions do not require a "$ return .." to output the text.
+
+List of additional modules:
+	- <morse.lua> Convert text to morse code and back again
+	- <music.lua> Get a number 1 hit
+	- <noobgen.lua> Generate noobish text
+	- <quotes.lua> Add and read quotes
+	- <roman.lua> Convert decimal numbers to the roman system back back
+
+
+# Default functions: (automatically loaded)
+	adduser("<nick>", "<group>")
+		^* Adds a person of the current channel to any group
+
+	remuser("<nick>", "<group>")
+		^* Removes a person of the current channel from any group
+
+	agario("<text>")
+		^* Converts a server IP or party link to a clickable link.
+		^ Accepted text formats: ip.address:port, #PARTY, PARTY
+
+	decide("<text>")
+		^* Returns either "Yes", "No" or "Maybe" on any question
+
+	executionTime()
+		^* Returns the time it took to execute the script
+
+	fire()
+		^* Fires a shot in the russian roulette. 1 / 6 chance to get killed
+
+	help()
+		^* Reference to this file
+
+	link("list") -> link("<link name>")
+		^* Returns a pre-defined text for the given link name
+
+	loadScript("url")
+		^* Loads an external Lua script from the given address
+
+	paperfold(height, [thickness])
+		^* Folds a piece of paper X times until it reaches the specified height in meters
+		^ height: number or "<formatted number>"
+		^ thickness: number or "<formatted number>", defaults to 1 mm
+
+	sell("<item>")
+		^* Sells the item for a random price
+
+
+# Extended helper functions: (automatically loaded)
+	dump(object)
+		^ Analyzes and outputs a table and its contents as a string
+
+	fromFancy("<formatted number>")
+		^ Formats ugly number to fancy ("1k" -> 1000, "1 m" -> 0.001)
+
+	toFancy(number)
+		^ Converts fancy number to ugly (1000 -> "1k", 0.001 -> "1m")
+
+	getUserObject("<name>")
+		^ Searchs a currently online user in the channel (case insensitive)
+		^ Returns { nick=?, hostmask=? } or nil if not found
+
+	math.round(number, [digits])
+		^ Rounds the number
+		^ digits: Optional, describes the decimal digits
+
+	math.sign(number, [tolerance])
+		^ Gets the sign of a number
+		^ tolerance: Optional, must be a positive number
+
+	my_string_variable:split("<delimiter>")
+		^ Splits a string into an array, using the delimiter character(s)
+
+	my_string_variable:trim()
+		^ Removes beginning and tailing spaces
+
+	percent(number, ["<text>"])
+		^* Outputs a by 100 multiplicated number (0.521431, "average" -> "52.14% average")
+
+	table.copy(table)
+		^ Copies a table to remove its reference
+
+	Complex([real], [imaginary])
+		^ Creates a new complex calculating class
+		^ real, imaginary: Optional, will be set to zero otherwise
+		:add(real, imaginary)
+		:add(Complex_object)
+		:addPolar(length, angle)
+			^ Adds polar value to the real and imaginary axis (degrees) [buggy!]
+		:addReal(amount)
+		:addImag(amount)
+		:length()
+			^ Length of the polar hypotenuse / absolute value
+		:angle()
+			^ Angle in the polar system (degrees)
+		:tostring()
+		:topolar()
+
+
+# Functions in karma.lua:
+	credits()
+		^* Outputs the credits of the current module
+
+	addKarma("<nickname>")
+		^* Adds 1 karma point to the specified person (requires authentification)
+		^ nickname: A person that is present in the current channel (case insensitive)
+
+	getKarma("<nickname>")
+		^* Gets the karma of the specified person (case insensitive)
+
+
+# Functions in morse.lua:
+	credits()
+		^* Outputs the credits of the current module
+
+	morse2text("<morse text>")
+		^* Converts morse text into readable text
+
+	text2morse("<text>")
+		^* Converts readable text into morse code
+
+
+# Functions in music.lua:
+	getHit([year number])
+		^* Gets a random number 1 hit from the years 1960-88
+		^ year number: Optional, can be in the following formats: 71 or 1971
+
+
+# Functions in noobgen.lua:
+	credits()
+		^* Outputs the credits of the current module
+
+	generate([amount sentences])
+		^* Generates noobish sentences, default: 3
+		^ amount sentences: Optional, numeric value from 1 to 6
+
+
+# Functions in quotes.lua:
+	credits()
+		^* Outputs the credits of the current module
+
+	addQuote("<text>")
+		^* Adds a quote to the database (requires authentification)
+
+	getQuote(identifier)
+		^* Gets a quote by index (number) or by keyword (string)
+
+	removeQuote(index)
+		^* Removes one of your quotes
+
+
+# Functions in roman.lua:
+	credits()
+		^* Outputs the credits of the current module
+
+	arabic2roman(number)
+		^* Converts a regular number into a roman number
+
+	roman2arabic("<roman number>")
+		^* Converts a roman number into a regular number
+
+
+ Other commands
+================
+These commands do not depend on any Lua skills and can be used like any other regular bot command.
+
+$c <text>
+	^ Colorizes the text
+
+$help
+	^ Returns the available commands of the bot (not informative!)
+
+$info
+	^ Outputs information about the bot
+
+$next
+	^ Another satisfied customer. Next!
+
+$rev <text>
+	^ Reverses the text in a special way
+
+$tell <nick> <text>
+	^ Tells the nick your text when (s)he joins a channel where the bot is present
+	^ Detection sensivity: Nicknames can have 1 typo per 4 characters in the name
+
+
+ The cheat game
+================
+This is a special cards game where lying skills are required.
+Complicated and much time-taking wikipedia article: https://en.wikipedia.org/wiki/Cheat_%28game%29
+
+
+ Theory of the game
+--------------------
+There are in total 35 cards. Four of each type (6, 7, 8, 9, 10, J, K, A) and three queens.
+The target is to get ALL your cards away with lying and tricking the other players.
+After the game started you will get ~ (35 / players) cards to use in the game.
+
+There is a stack with a "main card", if it's your turn, you must play a card with this type.
+It does not matter if it's a fake card or a correct one as long the other players think it's a correct one.
+To place a card on top of the stack, you only need the index of the card in your hand,
+ so the other players do not know if your card is correct or not.
+
+! This game might take up 30 minutes until someone wins !
+
+
+ Joining and leaving
+---------------------
+Joining and leaving is totally easy and uses these two commands:
+> $ljoin
+> $lleave
+
+You can leave a game while it's running but not join it again.
+Leaving the channel or chaning the nickname will kick you out of the game too.
+
+
+ Cards on the stack
+--------------------
+As the game began with 3 or more players, there's no stack to begin with, so you must start a new one.
+First, you say which card type it is, then the index of the card in your hand to put down and add as many other card indices you want. (No limits)
+> $ladd <card type> <index> <index>
+
+So if you got the following cards in your hand and you want to start a stack with the card 6, you might have something like this:
+> $lcards
+Your cards: 1[8] 2[K] 3[10] 4[6] 5[8] 6[A] 7[6] 8[6]
+> $ladd 6 4 7
+
+Now you have set the main card to "6" and placed the card indices 4 ("6") and 7 ("6") on the empty stack.
+Remember! You can start like this whenever there's no stack available.
+
+
+ Tricking the players
+----------------------
+Somewhen there are 7 cards on the stack and everybody says they're a king card.
+This is the point where they might start to lie. If you don't believe the previous player, simply use
+> $lcheck
+..and the last placed card(s) will be checked whether they are correct main cards or not.
+
+If they're actually correct, you get the complete stack and the next player can start a new stack.
+In the other case, if one or more top cards are not correct, the complete stack gets sent to the previous player
+ and you can start with a new stack. (This is what you should try to reach!)
+
+
+ Queens
+--------
+In this variant of cheat game, there's a bad card type: the queen.
+Whenever you have 4 similar cards, they're automatically discarded by the bot.
+But there are only three queens (red marked whenever you see your cards), this means they can not be discarded.
+The best method is to get a queen somehow to a player with less cards by lying, so they can not win the game until the queen is away.
+
+
+ End of the game
+-----------------
+You win when you have no cards left and the next player did his move.
+The best strategies to reach this are:
+
+- With two cards:
+	First put down a fake card and the real one in the 2nd round, so you have no cards left and the next player can't give you the stack anymore.
+
+- With similar cards:
+	Put down a fake card and the other similar cards in the 2nd round, same result as above.
+
+- Annoy the players:
+	If they don't believe you anything anymore, simply put one correct card.
+	Repeat this until they won't check all your cards anymore. Find the perfect balance!
+
+- Manipulation with communication:
+	Words help - or not. Just try to confuse the people with sentences like
+	"Oh shit! Wrong card" or "Oops, how can I place another card instead?" Be creative :)

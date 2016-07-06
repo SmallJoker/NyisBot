@@ -5,8 +5,10 @@ if not os.execute then
 	error("Do not include security.lua again, you noob.")
 end
 
+local start_time = os.clock()
+
 --{ READONLY TABLES
-local function protect(t)
+local function protect_table(t)
 	return setmetatable({}, {
 			__index = t,
 			__newindex = function(t, key, value)
@@ -17,31 +19,44 @@ local function protect(t)
 end
 
 for k = 1, L.online do
-	N[k] = protect(N[k])
+	N[k] = protect_table(N[k])
 end
 
-L = protect(L)
+L = protect_table(L)
 --} READONLY TABLES
 
 --{ PROTECT INCLUDE FUNCTIONS
-local _dofile = dofile
-function dofile(arg)
-	assert(type(arg) == "string", "Argument #1: String expected.")
-	assert(not string.find(arg, "\\"), "Blocked for security reasons.")
-	assert(not string.find(arg, "/"),  "Blocked for security reasons.")
-	assert(arg ~= "", "Invalid file name.")
+local function protect_function(name, empty_msg, check)
+	local old_func = _G[name]
+	assert(old_func ~= nil, "Function "..name.." is nil.")
+	if check then
+		check()
+	end
 
-	_dofile(arg)
+	_G[name] = function(arg)
+		assert(type(arg) == "string", "Argument #1: String expected.")
+		assert(arg ~= "", empty_msg)
+		if check then
+			check()
+		end
+		return old_func(arg)
+	end
 end
 
-local _require = require
-function require(arg)
-	assert(type(arg) == "string", "Argument #1: String expected.")
-	assert(debug.getinfo(2).source:sub(1, 1) == "@", "Blocked for security reasons.")
-	assert(arg ~= "", "Invalid file name.")
+protect_function("dofile", "Invalid file name.", function()
+	if debug.getinfo(3).source:sub(1, 1) ~= "@" then
+		assert(not string.find(arg, "\\") and not string.find(arg, "/"),
+				"Blocked for security reasons.")
+	end
+end)
 
-	return _require(arg)
-end
+protect_function("require", "Invalid file name.", function()
+	assert(debug.getinfo(3).source:sub(1, 1) == "@", "Blocked for security reasons.")
+end)
+
+protect_function("loadstring", "Empty content!", function()
+	assert(debug.getinfo(3).source:sub(1, 1) == "@", "Blocked for security reasons.")
+end)
 --} PROTECT INCLUDE FUNCTIONS
 
 local start_time = os.clock()
@@ -66,7 +81,6 @@ os.setlocale = nil
 coroutine = nil
 package = nil
 loadfile = nil
-loadstring = nil
 
 pcall = nil
 rawget = nil
@@ -250,7 +264,7 @@ function fire()
 end
 
 function help()
-	print(L.nick ..": You will find all available commands here: http://pastebin.com/raw/Bj15D8zs")
+	print(L.nick ..": Explanation of the basic functions: https://github.com/SmallJoker/NyisBot/blob/master/help.lua")
 end
 
 function adduser(nick, group)
@@ -313,7 +327,7 @@ function haystack(text)
 	local cmd = false
 	local depth = 0
 
-	--        0        1        3          7
+	--		0		1		3		  7
 	-- print2("print1(\"print2(\\\"print1(\\\\\\\"test\\\\\\\")\\\")")")
 	-- print1("print2(\"print1(\\\"test\\\")\")")
 	-- print2("print1(\"test\")")
@@ -340,7 +354,7 @@ function decide(text)
 	assert(type(text) == "string", "Argument #1: String expected")
 	assert(string.find(text, '?'), "No question mark found!")
 	assert(string.len(text) > 8, "Too short question!")
-	
+
 	local rand = math.random()
 	if rand < 0.35 then
 		print(L.nick ..": Yes")
@@ -349,4 +363,27 @@ function decide(text)
 	else
 		print(L.nick ..": Maybe")
 	end
+end
+
+function loadScript(url)
+	local curl_lib = require("luacurl")
+	local curl = curl_lib.new()
+
+	curl:setopt(curl_lib.OPT_URL, url)
+	local chunks = {}
+	curl:setopt(curl_lib.OPT_WRITEFUNCTION, function(param, buf)
+		table.insert(chunks, buf)
+		return #buf
+	end)
+	curl:setopt(curl_lib.OPT_PROGRESSFUNCTION, function(param, dltotal, dlnow)
+		print('%', url, dltotal, dlnow)
+	end)
+	curl:setopt(curl_lib.OPT_NOPROGRESS, true)
+	assert(curl:perform())
+	loadstring(table.concat(chunks))()
+end
+
+function executionTime()
+	local t = os.clock() - start_time
+	print(L.nick .. ": Took " .. math.round(t * 1000, 2) .. " ms")
 end
