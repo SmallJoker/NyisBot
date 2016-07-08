@@ -173,6 +173,14 @@ List of additional modules:
 		:topolar()
 
 
+# Internet related functions: (automatically loaded)
+	ddg("<keywords>"), duckduckgo("<keywords>")
+		^* Uses DuckDuckGo Instant to search for something
+
+	loadScript("<url>")
+		^ Downloads a script from the internet and executes it
+
+
 # Functions in karma.lua:
 	credits()
 		^* Outputs the credits of the current module

@@ -37,24 +37,31 @@ local function protect_function(name, empty_msg, check)
 		assert(type(arg) == "string", "Argument #1: String expected.")
 		assert(arg ~= "", empty_msg)
 		if check then
-			check()
+			check(arg)
 		end
 		return old_func(arg)
 	end
 end
 
-protect_function("dofile", "Invalid file name.", function()
+protect_function("dofile", "Invalid file name.", function(arg)
 	if debug.getinfo(3).source:sub(1, 1) ~= "@" then
 		assert(not string.find(arg, "\\") and not string.find(arg, "/"),
 				"Blocked for security reasons.")
 	end
 end)
 
-protect_function("require", "Invalid file name.", function()
+protect_function("loadfile", "Invalid file name.", function(arg)
+	if debug.getinfo(3).source:sub(1, 1) ~= "@" then
+		assert(not string.find(arg, "\\") and not string.find(arg, "/"),
+				"Blocked for security reasons.")
+	end
+end)
+
+protect_function("require", "Invalid file name.", function(arg)
 	assert(debug.getinfo(3).source:sub(1, 1) == "@", "Blocked for security reasons.")
 end)
 
-protect_function("loadstring", "Empty content!", function()
+protect_function("loadstring", "Empty content!", function(arg)
 	assert(debug.getinfo(3).source:sub(1, 1) == "@", "Blocked for security reasons.")
 end)
 --} PROTECT INCLUDE FUNCTIONS
@@ -80,7 +87,6 @@ os.setlocale = nil
 
 coroutine = nil
 package = nil
-loadfile = nil
 
 pcall = nil
 rawget = nil
@@ -102,6 +108,7 @@ math.randomseed(os.clock() * 1000)
 
 dofile("misc_helpers.lua")
 dofile("complex.lua")
+dofile("internetz.lua")
 
 --{ FUNCTION LINK()
 local link_list = {
@@ -363,24 +370,6 @@ function decide(text)
 	else
 		print(L.nick ..": Maybe")
 	end
-end
-
-function loadScript(url)
-	local curl_lib = require("luacurl")
-	local curl = curl_lib.new()
-
-	curl:setopt(curl_lib.OPT_URL, url)
-	local chunks = {}
-	curl:setopt(curl_lib.OPT_WRITEFUNCTION, function(param, buf)
-		table.insert(chunks, buf)
-		return #buf
-	end)
-	curl:setopt(curl_lib.OPT_PROGRESSFUNCTION, function(param, dltotal, dlnow)
-		print('%', url, dltotal, dlnow)
-	end)
-	curl:setopt(curl_lib.OPT_NOPROGRESS, true)
-	assert(curl:perform())
-	loadstring(table.concat(chunks))()
 end
 
 function executionTime()
