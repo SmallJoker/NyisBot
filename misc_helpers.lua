@@ -58,7 +58,12 @@ end
 --------------------------------------------------------------------------------
 function dump(t, layer)
 	layer = layer or 0
-	if t == nil then return "nil value" end
+	if layer > 10 then
+		return "ERR_DUMP_TOO_DEEP"
+	end
+	if t == nil then
+		return "nil value"
+	end
 
 	local report = ""
 	if type(t) == "table" then
@@ -78,12 +83,21 @@ end
 --------------------------------------------------------------------------------
 function getUserObject(name)
 	name = string.lower(name)
+	local distances = {}
 	for k = 1, L.online do
 		local nick = string.lower(N[k].nick)
-		local sensivity = math.min(string.len(name), string.len(nick)) / 4.0
-
-		if stringldistance(name, nick) <= sensivity then
+		if nick == name then
 			return { nick = N[k].nick, hostmask = N[k].hostmask }
+		end
+
+		distances[k] = stringldistance(name, nick)
+	end
+	--local sensivity = math.min(string.len(name), string.len(nick)) / 4.0
+	for dist = 1, 3 do
+		for k,v in pairs(distances) do
+			if v <= dist then
+				return { nick = N[k].nick, hostmask = N[k].hostmask }
+			end
 		end
 	end
 	return nil
@@ -119,7 +133,7 @@ local tech_sizes = {
 	{ "G", 1E9 },
 	{ "M", 1E6 },
 	{ "k", 1E3 },
-	{ "K", 1E3  },
+	{ "K", 1E3 },
 	{ "%", 0.01, false },
 	{ "m", 1E-3 },
 	{ "\xb5", 1E-6, false },
@@ -130,9 +144,7 @@ local tech_sizes = {
 }
 
 function fromFancy(num, i)
-	if not i then
-		i = 1
-	end
+	i = i or 1
 	assert(type(num) == "string", "Argument #"..i..": String expected.")
 
 	num = num:gsub(" ", "")
@@ -148,9 +160,7 @@ function fromFancy(num, i)
 end
 
 function toFancy(num, perc, i)
-	if not i then
-		i = 1
-	end
+	i = i or 1
 	assert(type(num) == "number", "Argument #"..i..": Number expected.")
 	assert(type(num) == "nil" or type(num) == "number",
 			"Invalid type for 'perc': nil or number expected.")

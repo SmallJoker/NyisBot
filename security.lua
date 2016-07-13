@@ -112,25 +112,28 @@ dofile("internetz.lua")
 
 --{ FUNCTION LINK()
 local link_list = {
-	["69"]		= "https://docs.google.com/document/d/1-2D4dZH1G9x_kLQ-9YhV3YDmAhRRk7VsxHoCjSUScHk/",
 	address		= "What's your address? http://www.overclockers.com.au/image2.php?pic=images/newspics/29jan16/11.jpg",
 	amaze		= "Amazing! https://i.imgur.com/O8tFZ.gif",
 	applause	= "*CLAP* *CLAP* *CLAP* http://i.imgur.com/YiUe1r6.gif",
 	awaynick	= "Do NOT use away nicknames! http://sackheads.org/~bnaylor/spew/away_msgs.html",
 	bugs		= "Bugs everywhere <.< http://d2ykiwzv4lwge4.cloudfront.net/wp-content/uploads/2014/08/31.jpg",
 	busy		= "Don't interrupt me! http://i2.kym-cdn.com/photos/images/original/000/390/314/f56.gif",
+	come		= "Ok. http://i.imgur.com/Jr1dMxV.gif",
 	developers	= "The developers! http://www.youtube.com/watch?v=KMU0tzLwhbE",
-	dj			= "Every 15 minutes there are random giveaways to the people in #dontjoinitsatrap ! (You can join it by clicking on the channel name)",
+	dj			= "Every 15 minutes there are random giveaways to the people in"..
+					" #dontjoinitsatrap ! (You can join it by clicking on the channel name)",
 	dramatic	= "Dramatic situation! https://www.youtube.com/watch?v=y8Kyi0WNg40",
 	gemini		= "Yes, we all love him, thus invite him to your channel! :) http://i.imgur.com/g4KjEJf.png",
 	grammarnazi	= "Watch your grammar! http://memesvault.com/wp-content/uploads/No-Cat-Meme-26.jpg",
 	high5		= "High five! https://i.imgur.com/M0bWify.gif",
+	kock		= function() dofile("quotes.lua") getQuote(5) end,
 	money		= "I have money. https://i.imgur.com/yLc4poE.gif",
 	nope		= "NOPE! http://i.imgur.com/RMsnqCF.gif",
 	nvidia		= "One of Linus' sentences: https://www.youtube.com/watch?v=iYWzMvlj2RQ",
 	panda		= "Never say no to panda. https://www.youtube.com/watch?v=X21mJh6j9i4",
 	["quick-look"]	= "Let's take a quick look. http://i.imgur.com/JRcwAWP.gif",
-	["rizon-prices"]= "Rizon offers many cool prices you can win with some luck. Get the complete list with the command "..c("/msg GOD XDCC list").." and try your luck!",
+	["rizon-prizes"]= "Rizon offers many cool prizes you can win with some luck. Get the complete list with the command "..
+					c("/msg GOD XDCC list").." and try your luck!",
 	repost		= "REPOST ALERT! http://i.imgur.com/FHJc4aP.gif",
 	semicolons	= "http://36.media.tumblr.com/tumblr_m4y213pGlc1qa0uujo1_1280.jpg",
 	slash		= "How to use slash: http://users.kymp.net/feuer/etcomic/013.jpg",
@@ -142,7 +145,6 @@ local link_list = {
 	wdtam		= "LGTM, C DIS 2: http://users.kymp.net/feuer/etcomic/050.jpg",
 	win8		= "Logical way to say how Windows 8 is: http://www.dead-fish.com/wp-content/uploads/2013/06/windows-8-shit-or-good.jpg",
 	win10		= "Simple showcase of Windows 10: http://esfriki.com/f/a6LXLbR_700b.jpg",
-	["xkcd-story"]	= "A long, very long animation: http://www.xkcd.com/1190/",
 	yes			= "Yes! YES! https://i.imgur.com/tdrBo.gif",
 	youtube		= "How-to-youtube: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 	["yes-sure"]= "Meh, yes sure, whatever. http://replygif.net/i/247.gif",
@@ -162,7 +164,9 @@ local link_list = {
 }
 
 local link_list_keys = {}
-for n in pairs(link_list) do table.insert(link_list_keys, n) end
+for n in pairs(link_list) do
+	table.insert(link_list_keys, n)
+end
 table.sort(link_list_keys)
 
 function link(text)
@@ -178,7 +182,7 @@ function link(text)
 		for i,v in ipairs(link_list_keys) do
 			text = text.." "..v
 		end
-		print(L.nick ..":".. text)
+		print(L.nick ..":".. text.." )")
 		return
 	end
 
@@ -192,16 +196,16 @@ function link(text)
 		end
 	end
 
-	if text == "giveaway" and string.lower(L.channel) == "#dontjoinitsatrap" then
-		print ("R U kidding me?")
-		return
-	end
-
-	if not link_list[text] then
+	local entry = link_list[text]
+	if not entry then
 		print(L.nick ..": Link keyword not found.")
 		return
 	end
-	print(link_list[text])
+	if type(entry) == "function" then
+		entry() -- Reference to another function
+	else
+		print(entry)
+	end
 end
 --} FUNCTION LINK()
 
@@ -215,52 +219,6 @@ function sell(text)
 	print("Sold "..text.." for \x033$"..(math.ceil(math.random() * 30 + 1) * 50))
 end
 
--- Convert party ID or server IP to an agar.io link
-function agario(text)
-	assert(type(text) == "string", "Argument #1: String expected.")
-
-	local base = "http://agar.io/"
-	local len = string.len(text)
-	if len == 5 then
-		print(base.."#"..text)
-		return
-	end
-
-	local bpos, epos = string.find(text, "#")
-	if bpos then
-		local party = string.sub(text, bpos, len) -- #ABCDE
-		if string.len(party) ~= 6 then
-			print(L.nick ..": Party ID "..c(party).." seems to be wrong. Typo?")
-			return
-		end
-		print(base..party)
-		return
-	end
-
-	bpos, epos = string.find(text, ":")
-	if bpos then
-		local address = string.sub(text, 1, bpos)
-		if string.len(address) < 8 then
-			print(L.nick ..": Invalid address.. it's simply too short.")
-			return
-		end
-		local port = tonumber(string.sub(text, epos + 1, len))
-		if not port or port > 0xFFFF then
-			print(L.nick ..": Invalid port number. Allowed range: 1 .. ~65500")
-			return
-		end
-
-		local first_part = string.sub(text, 1, 3)
-		if first_part == "127" or first_part == "192" or first_part == "0.0" then
-			print(L.nick ..": 127.0.0.1 and 192.*.*.* are local network IP addresses. People outside your router network can not connect to it.")
-			return
-		end
-		print(base.."?ip="..text)
-		return
-	end
-	print(L.nick ..": Unknown format. Accepted are "..c("ip.address:port")..", "..c("#PARTY").." and "..c("PARTY")..".")
-end
-
 -- Russian roulette. Have fun.
 function fire()
 	if math.random() > 0.167 then
@@ -271,29 +229,31 @@ function fire()
 end
 
 function help()
-	print(L.nick ..": Explanation of the basic functions: https://github.com/SmallJoker/NyisBot/blob/master/help.lua")
+	print(L.nick ..": Explanation of the basic functions: https://github.com/SmallJoker/NyisBot/blob/master/help.txt")
+end
+
+local function groupAction(nick, group, func)
+	assert(type(nick) == "string" and type(group) == "string", 
+			"Argument #1 and/or #2: String expected.")
+
+	local object = getUserObject(nick)
+	if not object then
+		print(L.nick ..": Unknown nickname.")
+		return
+	end
+	print("(".. L.nick ..") ".. func():gsub("{n}", object.nick))
 end
 
 function adduser(nick, group)
-	assert(type(nick) == "string" and type(group) == "string", "Argument #1 and/or #2: String expected.")
-
-	local object = getUserObject(nick)
-	if not object then
-		print(L.nick ..": Unknown nickname.")
-		return
-	end
-	print("(".. L.nick ..") Added user ".. object.nick .." to group ".. c(group))
+	groupAction(nick, group, function()
+		return "Added user {n} to group ".. c(group)
+	end)
 end
 
 function remuser(nick, group)
-	assert(type(nick) == "string" and type(group) == "string", "Argument #1 and/or #2: String expected.")
-
-	local object = getUserObject(nick)
-	if not object then
-		print(L.nick ..": Unknown nickname.")
-		return
-	end
-	print("(".. L.nick ..") Removed user ".. object.nick .." from group ".. c(group))
+	groupAction(nick, group, function()
+		return "Removed user {n} from group ".. c(group)
+	end)
 end
 
 function paperfold(height, thickness)
@@ -375,4 +335,23 @@ end
 function executionTime()
 	local t = os.clock() - start_time
 	print(L.nick .. ": Took " .. math.round(t * 1000, 2) .. " ms")
+end
+
+function coin(n)
+	n = n or 1
+	assert(type(n) == "number", "Argument #1: Number expected")
+	assert(n < 1E5, "Number too large.")
+	assert(n > 0, "Number too small.")
+
+	local heads = 0
+	for i = 1, n do
+		if math.random() < 0.5 then
+			heads = heads + 1
+		end
+	end
+	
+	print("Flipped one coin "..n.." times. It took "..
+			math.round(math.random() * n / 20, 2).." minutes"..
+			" to count the heads and finally got ".. heads..
+			" of them. ("..  math.round(heads * 100 / n, 2) .."%)")
 end

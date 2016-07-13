@@ -91,9 +91,8 @@ List of additional modules:
 	remuser("<nick>", "<group>")
 		^* Removes a person of the current channel from any group
 
-	agario("<text>")
-		^* Converts a server IP or party link to a clickable link.
-		^ Accepted text formats: ip.address:port, #PARTY, PARTY
+	coin([n])
+		^* Returns the number of heads after flipping a coin n (or 1) times
 
 	decide("<text>")
 		^* Returns either "Yes", "No" or "Maybe" on any question

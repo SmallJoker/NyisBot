@@ -1,5 +1,5 @@
 local curl_lib, curl
-local function download(url)
+local function download(url, useragent)
 	assert(type(url) == "string", "Argument #1: String expected")
 
 	if not curl_lib then
@@ -10,6 +10,7 @@ local function download(url)
 	local chunks = {}
 	local start_time = os.clock()
 
+	curl:setopt(curl_lib.OPT_USERAGENT, useragent)
 	curl:setopt(curl_lib.OPT_URL, url)
 	curl:setopt(curl_lib.OPT_WRITEFUNCTION, function(param, buf)
 		table.insert(chunks, buf)
@@ -26,7 +27,7 @@ local function download(url)
 end
 
 function loadScript(url)
-	loadstring(download(url))()
+	loadstring(download(url, "ScriptDL"))()
 end
 
 function duckduckgo(text, result)
@@ -35,47 +36,53 @@ function duckduckgo(text, result)
 	assert(type(result) == "number", "Argument #2: Nil or Number expected")
 
 	text = text:gsub("&", " and ")
-	text = text:gsub("+", " ")
+	text = text:gsub("+", "%%2B")
+	text = text:gsub(" ", "+")
 	local json = require("json")
-	text = download("http://api.duckduckgo.com/?q="..text.."&format=json&no_redirect=1")
+	text = download(
+		"http://api.duckduckgo.com/?q="..text.."&format=json&no_redirect=1",
+		"python-duckduckgo 0.242"
+	)
 	local decoded = json.decode(text)
-	local description, link
+	local topics
+	local descriptions = {}
+	local links = {}
 
-	if not link then
-		if decoded.Redirect and decoded.Redirect ~= "" then
-			description = "!Bang redirect"
-			link = decoded.Redirect
+	if decoded.Redirect and decoded.Redirect ~= "" then
+		table.insert(descriptions, "!Bang redirect")
+		table.insert(links, decoded.Redirect)
+	end
+
+	topics = decoded.Results
+	if topics and #topics > 0 then
+		for i,v in ipairs(topics) do
+			table.insert(descriptions, v.Text)
+			table.insert(links, v.FirstURL)
 		end
 	end
-	if not link then
-		if decoded.Abstract and decoded.Abstract ~= "" then
-			description = decoded.Abstract
-			link = decoded.AbstractURL
+
+	topics = decoded.RelatedTopics
+	if topics and #topics > 0 then
+		for i,v in ipairs(topics) do
+			table.insert(descriptions, v.Text)
+			table.insert(links, v.FirstURL)
 		end
 	end
-	if not link then
-		local topics = decoded.Results
-		if topics and #topics > 0 then
-			if result > #topics then
-				result = #topics
-			end
-			description = topics[result].Text
-			link = topics[result].FirstURL
-		end
+
+	if decoded.Abstract and decoded.Abstract ~= "" then
+		table.insert(descriptions, decoded.Abstract)
+		table.insert(links,  decoded.AbstractURL)
 	end
-	if not link then
-		local topics = decoded.RelatedTopics
-		if topics and #topics > 0 then
-			if result > #topics then
-				result = #topics
-			end
-			description = topics[result].Text
-			link = topics[result].FirstURL
-		end
-	end
-	if not link then
+
+	if #links == 0 then
 		error("No results? Try something else")
 	end
+	if result > #links then
+		result = #links
+	end
+
+	local description = descriptions[result]
+	local link = links[result]
 
 	if string.len(description) + string.len(link) > 400 then
 		description = description:sub(1, 400 - string.len(link))
