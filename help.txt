@@ -109,9 +109,6 @@ List of additional modules:
 	link("list") -> link("<link name>")
 		^* Returns a pre-defined text for the given link name
 
-	loadScript("url")
-		^* Loads an external Lua script from the given address
-
 	paperfold(height, [thickness])
 		^* Folds a piece of paper X times until it reaches the specified height in meters
 		^ height: number or "<formatted number>"
@@ -175,6 +172,9 @@ List of additional modules:
 # Internet related functions: (automatically loaded)
 	ddg("<keywords>"), duckduckgo("<keywords>")
 		^* Uses DuckDuckGo Instant to search for something
+
+	downloadPrint("<url>")
+		^* Downloads and outputs the website contents
 
 	loadScript("<url>")
 		^ Downloads a script from the internet and executes it

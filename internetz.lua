@@ -10,16 +10,17 @@ local function download(url, useragent)
 	local chunks = {}
 	local start_time = os.clock()
 
-	curl:setopt(curl_lib.OPT_USERAGENT, useragent)
+	curl:setopt(curl_lib.OPT_USERAGENT, "Mozilla/5.0 (NyisBot)")
 	curl:setopt(curl_lib.OPT_URL, url)
+	curl:setopt(curl_lib.OPT_CONNECTTIMEOUT, 4)
 	curl:setopt(curl_lib.OPT_WRITEFUNCTION, function(param, buf)
 		table.insert(chunks, buf)
-		assert(os.clock() - start_time < 3, "Download took too long.")
+		assert(os.clock() - start_time < 4, "Download took too long.")
 		return #buf
 	end)
-	curl:setopt(curl_lib.OPT_PROGRESSFUNCTION, function(param, dltotal, dlnow)
-		print('%', url, dltotal, dlnow)
-	end)
+	--curl:setopt(curl_lib.OPT_PROGRESSFUNCTION, function(param, dltotal, dlnow)
+	--	print('%', url, dltotal, dlnow)
+	--end)
 	curl:setopt(curl_lib.OPT_NOPROGRESS, true)
 	assert(curl:perform())
 
@@ -27,7 +28,18 @@ local function download(url, useragent)
 end
 
 function loadScript(url)
-	loadstring(download(url, "ScriptDL"))()
+	loadstring(download(url))()
+end
+
+function downloadPrint(url)
+	local text = download(url)
+	local len = string.len(text)
+	print("Length: ".. len .. " |")
+	if len > 255 then
+		print(text:sub(1, 250) .. " ...")
+	else
+		print(text)
+	end
 end
 
 function duckduckgo(text, result)

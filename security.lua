@@ -23,6 +23,7 @@ for k = 1, L.online do
 end
 
 L = protect_table(L)
+debug = protect_table(debug)
 --} READONLY TABLES
 
 --{ PROTECT INCLUDE FUNCTIONS
@@ -67,30 +68,25 @@ end)
 --} PROTECT INCLUDE FUNCTIONS
 
 local start_time = os.clock()
-function LuaInterrupt(arg)
-	if os.clock() - start_time > 2.0 then
-		error("Interrupted: "..arg)
-		os.exit()
-	end
-end
-
-debug.sethook(LuaInterrupt, "", 1000)
 
 --{ DISABLE EVIL FUNCTIONS
 os.execute = nil
 os.exit = nil
 
+os.getenv = nil
 os.remove = nil
 os.rename = nil
-os.getenv = nil
 os.setlocale = nil
 
 coroutine = nil
+module = nil
 package = nil
 
+load = nil
 pcall = nil
 rawget = nil
 rawset = nil
+rawequal = nil
 xpcall = nil
 unpack = nil
 getfenv = nil
@@ -119,6 +115,7 @@ local link_list = {
 	bugs		= "Bugs everywhere <.< http://d2ykiwzv4lwge4.cloudfront.net/wp-content/uploads/2014/08/31.jpg",
 	busy		= "Don't interrupt me! http://i2.kym-cdn.com/photos/images/original/000/390/314/f56.gif",
 	come		= "Ok. http://i.imgur.com/Jr1dMxV.gif",
+	crocs		= "http://i.imgur.com/jo2GWlj.jpg",
 	developers	= "The developers! http://www.youtube.com/watch?v=KMU0tzLwhbE",
 	dj			= "Every 15 minutes there are random giveaways to the people in"..
 					" #dontjoinitsatrap ! (You can join it by clicking on the channel name)",

@@ -12,10 +12,7 @@ db:exec[[
 ]]
 
 local function isAdmin()
-	if L.nick == "Krock" and getUserstatus(L.nick) == 3 then
-		return true
-	end
-	return false
+	return (L.hostmask == "~krock@works.7")
 end
 
 local function lsqlite_exec(query)
