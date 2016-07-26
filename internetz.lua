@@ -1,5 +1,5 @@
 local curl_lib, curl
-local function download(url, useragent)
+local function download(url)
 	assert(type(url) == "string", "Argument #1: String expected")
 
 	if not curl_lib then
@@ -28,7 +28,12 @@ local function download(url, useragent)
 end
 
 function loadScript(url)
-	loadstring(download(url))()
+	local script, err = loadstring(download(url))
+	if not err then
+		script()
+	else
+		print(err)
+	end
 end
 
 function downloadPrint(url)

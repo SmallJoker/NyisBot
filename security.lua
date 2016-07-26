@@ -114,6 +114,7 @@ local link_list = {
 	awaynick	= "Do NOT use away nicknames! http://sackheads.org/~bnaylor/spew/away_msgs.html",
 	bugs		= "Bugs everywhere <.< http://d2ykiwzv4lwge4.cloudfront.net/wp-content/uploads/2014/08/31.jpg",
 	busy		= "Don't interrupt me! http://i2.kym-cdn.com/photos/images/original/000/390/314/f56.gif",
+	color		= "\x02\x1f\x1d\x037,5 COLOR MADNESS",
 	come		= "Ok. http://i.imgur.com/Jr1dMxV.gif",
 	crocs		= "http://i.imgur.com/jo2GWlj.jpg",
 	developers	= "The developers! http://www.youtube.com/watch?v=KMU0tzLwhbE",
