@@ -28,6 +28,8 @@ local function download(url)
 end
 
 function loadScript(url)
+	assert(debug.getinfo(3) == nil, "Forbidden call of loadScript() within another function.")
+
 	local script, err = loadstring(download(url))
 	if not err then
 		script()
@@ -37,6 +39,8 @@ function loadScript(url)
 end
 
 function downloadPrint(url)
+	assert(debug.getinfo(3) == nil, "Forbidden call of downloadPrint() within another function.")
+
 	local text = download(url)
 	local len = string.len(text)
 	print("Length: ".. len .. " |")

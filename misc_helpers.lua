@@ -200,7 +200,7 @@ function random(min, max, decimal_output)
 	if decimal_output then
 		return num
 	else
-		return math.floor(num + 0.5)
+		return math.floor(num)
 	end
 end
 

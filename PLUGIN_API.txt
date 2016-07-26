@@ -60,6 +60,10 @@ L.hostmask
 		^ Gets the sign of a number
 		^ tolerance: Optional, must be a positive number
 
+	random(min, max, [decimal_output])
+		^ Returns a random number between and including [min] and [max - 1]
+		^ decimal_output: Returns decimal places aswell when set to true
+
 	string:split("<delimiter>")
 		^ Splits a string into an array, using the delimiter character(s)
 
@@ -127,16 +131,18 @@ Another (rather ugly) variant:
  More functions
 ================
 This API file only contains the must-have functions to start scripting.
-See http://pastebin.com/raw/Bj15D8zs for further functions to use in your project.
+Link to all documented functions in this bot:
+https://github.com/SmallJoker/NyisBot/blob/master/help.txt
 
 
  Using C
 =========
 C modules can be loaded in Lua, which is executed by C#.
-So this has some speed loss and is only recommended for huge projects.
+So this has some speed loss and is only recommended for heavy calculations.
 
-Add the LuaJIT path to the include directories and use this template to start.
-
+Add the LuaJIT path to the include directories of your project then you
+might want to use this prepared template to begin coding:
+-----------------------------
 #include "lua.h"
 #include "lauxlib.h"
 
@@ -171,3 +177,4 @@ EXPORT int luaopen_<PLUGINNAME>_safe(lua_State *L)
 {
 	return luaopen_LuaPlugin_(L);
 }
+-----------------------------
