@@ -1,11 +1,15 @@
+# Ignore bin and obj directories
+
+bin/
+obj/
+
+# Ignore local data
+
+*.suo
+*.user
+*.7z
+
+
 # Database files
 *.sqlite3
 *.db
-
-# Binary files
-*.exe
-*.dll
-
-# Other files
-*.wip.lua
-update.bat

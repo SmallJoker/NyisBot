@@ -1,0 +1,23 @@
+address = irc.losslessone.com
+port    = 6667
+
+identifier = IRC bot - Created by Krock, handcrafted. [C#] 2014-2016
+
+nickname = NyisBot
+password = .
+
+/* Your hostmask. It unlocks the admin commands */
+owner_hostmask = ~nickname@host.mask
+
+/* Channels must be seperated by spaces */
+channels = #nimg_lobby #agariofreedom
+
+
+/*
+	Format of github_projects.txt:
+
+<username>/<project>	<channel> <channel ..>
+foobaruser/project		#news #dummmy #foobar
+foobaruser/project2		#dummmy
+
+*/
