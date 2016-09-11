@@ -458,7 +458,7 @@ namespace MAIN
 					Say(channel, nick + ": $ljoin, $lleave, $lstart, $ladd, $lcheck, $lcards. You can find a tutorial in the help file.");
 					return;
 				}
-				Say(channel, nick + ": $info, [$lua/$] <text../help()>, $rev <text..>, $c <text..>, $tell <nick> <text..>, $help lgame, $updghp. See also: https://github.com/SmallJoker/NyisBot/blob/master/help.txt");
+				Say(channel, nick + ": $info, [$lua/$] <text../help()>, $rev <text..>, $c <text..>, $tell <nick> <text..>, $help lgame, $updghp. See also: https://github.com/SmallJoker/NyisBot/blob/master/HELP.txt");
 				break;
 			case "$info":
 			case "$about":
