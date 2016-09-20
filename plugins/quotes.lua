@@ -42,19 +42,24 @@ function addQuote(text)
 		error("Flood detected.")
 	end
 	block_addquote = true
-	
+
+	if not text:find('<') or not text:find('>') then
+		throwError(400, "Bad Request - No nickname found")
+		return
+	end
+
 	text = text:gsub("'", "&#39;")
-	
+
 	local results = {}
 	for v in db:rows("SELECT id FROM quotes WHERE content LIKE '%".. text .."%' LIMIT 1") do
 		table.insert(results, v[1])
 	end
-	
+
 	if #results > 0 then
 		print(L.nick ..": Found similar quote, #".. results[1])
 		return
 	end
-	
+
 	lsqlite_exec("INSERT INTO quotes VALUES (NULL, '".. L.nick .."', '".. text .."')")
 	local row = getRow("SELECT id FROM quotes WHERE content = '".. text .."' LIMIT 1")
 	print(L.nick ..": Added quote #".. row[1])
@@ -73,7 +78,7 @@ function getQuote(text)
 		error("Flood detected.")
 	end
 	block_getquote = true
-	
+
 	if #results == 1 then
 		local quote = results[1][3]:gsub("&#39;", "'")
 		print(c("[#".. results[1][1] .."] ").. quote)
@@ -96,13 +101,13 @@ function removeQuote(id)
 		throwError(403, "Authentification required.")
 		return
 	end
-	
+
 	local quote = getRow("SELECT writer FROM quotes WHERE id = ".. id .." LIMIT 1")
 	if not quote then
 		throwError(404, "Quote not found")
 		return
 	end
-	
+
 	if L.nick == quote[1] or isAdmin() then
 		lsqlite_exec("DELETE FROM quotes WHERE id = ".. id)
 		print(L.nick ..": Deleted!")
@@ -117,7 +122,7 @@ function fuckyouiamadmin(text, dump_it)
 		throwError(403, "No, you're not an admin!")
 		return
 	end
-	
+
 	if dump_it then
 		print(dump(getRow(text)))
 	else
