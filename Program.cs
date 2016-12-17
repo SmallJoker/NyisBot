@@ -455,10 +455,13 @@ namespace MAIN
 			#region MISC
 			case "$help":
 				if (args[1].ToLower() == "lgame") {
-					Say(channel, nick + ": $ljoin, $lleave, $lstart, $ladd, $lcheck, $lcards. You can find a tutorial in the help file.");
+					Say(channel, nick + ": $ljoin, $lleave, $lstart, $ladd, $lcheck, $lcards. " +
+						"You can find a tutorial in the help file.");
 					return;
 				}
-				Say(channel, nick + ": $info, [$lua/$] <text../help()>, $rev <text..>, $c <text..>, $tell <nick> <text..>, $help lgame, $updghp. See also: https://github.com/SmallJoker/NyisBot/blob/master/HELP.txt");
+				Say(channel, nick + ": $info, [$lua/$] <text../help()>, $rev <text..>, " +
+					"$c <text..>, $tell <nick> <text..>, $help lgame, $updghp. See also: " +
+					"https://github.com/SmallJoker/NyisBot/blob/master/HELP.txt");
 				break;
 			case "$info":
 			case "$about":
@@ -481,7 +484,7 @@ namespace MAIN
 					Part(args[1]);
 				break;
 			#endregion
-			#region reverse, colors
+			#region Reverse
 			case "$rev": {
 					if (length == 1) {
 						Say(channel, nick + ": Expected arguments: <text ..>");
@@ -524,6 +527,8 @@ namespace MAIN
 					Say(channel, nick + ": " + reversed);
 				}
 				break;
+			#endregion
+			#region Colorize
 			case "$c": {
 					string str = "";
 					for (int i = 1; i < length; i++) {
@@ -553,72 +558,74 @@ namespace MAIN
 		{
 			Log('[' + status + "] " + content);
 
-			if (status == "439" || content.StartsWith("*** Found your hostname")) {
-				NickAuth(G.settings["nickname"]);
-				return;
-			}
+			if (content.StartsWith("*** Found your hostname"))
+				status = "439";
 
-			if (status == "376" && !ready_sent && identified) {
-				OnBotReady();
-				ready_sent = true;
-				return;
-			}
+			switch (status) {
+			#region Nicklist
+			case "353": {
+					int id = -1;
+					for (int i = 0; i < chans.Length; i++) {
+						if (chans[i] != null && chans[i].name == destination) {
+							id = i;
+							break;
+						}
+					}
+					if (id < 0) {
+						Log("Error: Channel not added yet: " + destination);
+						return;
+					}
 
-			if (status == "MODE" && destination == G.settings["nickname"]) {
-				if (!identified) {
-					if (G.settings["password"] != "")
-						Say("NickServ", "identify " + G.settings["password"]);
-					identified = true;
+					int pos = 0;
+					while (pos < content.Length) {
+						int end_pos = content.IndexOf(' ', pos);
+						if (end_pos < pos)
+							end_pos = content.Length;
+
+						if (RANK_CHAR.Contains(content[pos].ToString()))
+							pos++;
+
+						string nick = content.Substring(pos, end_pos - pos);
+						chans[id].nicks[nick] = "?";
+
+						pos = end_pos + 1;
+
+					}
+					if (OnChannelJoin != null)
+						OnChannelJoin(ref chans[id]);
 				}
-				if (!ready_sent) {
+				break;
+			#endregion
+			case "376":
+				if (!ready_sent && identified) {
 					OnBotReady();
 					ready_sent = true;
 				}
-				return;
-			}
-
-			if (status == "INVITE") {
-				if (content.ToLower() == "#dontjoinitsatrap")
-					return;
-
-				Join(content);
-				return;
-			}
-
-			#region Nick list
-			if (status == "353") {
-				int id = -1;
-				for (int i = 0; i < chans.Length; i++) {
-					if (chans[i] != null && chans[i].name == destination) {
-						id = i;
-						break;
+				break;
+			#region Knock on the door
+			case "439":
+				NickAuth(G.settings["nickname"]);
+				break;
+			#endregion
+			#region Identify
+			case "MODE":
+				if (destination == G.settings["nickname"]) {
+					if (!identified) {
+						if (G.settings["password"] != "")
+							Say("NickServ", "identify " + G.settings["password"]);
+						identified = true;
+					}
+					if (!ready_sent) {
+						OnBotReady();
+						ready_sent = true;
 					}
 				}
-				if (id < 0) {
-					Log("Error: Channel not added yet: " + destination);
-					return;
-				}
-
-				int pos = 0;
-				while (pos < content.Length) {
-					int end_pos = content.IndexOf(' ', pos);
-					if (end_pos < pos)
-						end_pos = content.Length;
-
-					if (RANK_CHAR.Contains(content[pos].ToString()))
-						pos++;
-
-					string nick = content.Substring(pos, end_pos - pos);
-					chans[id].nicks[nick] = "?";
-
-					pos = end_pos + 1;
-
-				}
-				if (OnChannelJoin != null)
-					OnChannelJoin(ref chans[id]);
-				return;
-			}
+				break;
 			#endregion
+			case "INVITE":
+				Join(content);
+				break;
+			}
 		}
 
 		void OnUserEvent(string nick, string hostmask, string status, string channel)
@@ -690,6 +697,7 @@ namespace MAIN
 			#endregion
 		}
 
+		// Status codes with text only
 		string[] TEXT_STATUS = {
 								"NOTICE", "PRIVMSG", "TOPIC", "INVITE", "MODE",
 								"001", "002", "003", "251", "255",
@@ -715,6 +723,7 @@ namespace MAIN
 
 			string status = args[1].ToUpper();
 
+			#region Ping Pong
 			if (hostmask == "PING") {
 				status = status.ToLower();
 				if (status[0] == ':')
@@ -729,6 +738,7 @@ namespace MAIN
 			}
 			if (hostmask == "PONG")
 				return;
+			#endregion
 
 			if (status == "QUIT") {
 				OnUserEvent(nick, hostmask, status, "");
@@ -828,8 +838,8 @@ namespace MAIN
 				status == "254" ||
 				status == "265" ||
 				status == "266") {
-				// To be ingored??
-
+				
+				// Ignore stuff that's not supported yet
 				return;
 			}
 
@@ -1010,6 +1020,7 @@ namespace MAIN
 				list[n] = value;
 			}
 		}
+
 		public static int LevenshteinDistance(string s, string t)
 		{
 			if (string.IsNullOrEmpty(s)) {
