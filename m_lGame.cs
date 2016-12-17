@@ -179,7 +179,7 @@ namespace MAIN
 			case "$ladd": {
 					int player_index = FindPlayer(channel, nick);
 					if (player_index < 0) {
-						E.Notice(nick, "You are not part of the game.");
+						E.Notice(nick, "You are not part of the game. (yet?)");
 						return;
 					}
 
@@ -198,7 +198,8 @@ namespace MAIN
 					}
 
 					if (length < 3) {
-						E.Say(channel, nick + ": Expected arguments <'main card'> <card index> [<card index> ..etc] (Blue number: card value, Black number: index)");
+						E.Say(channel, nick + ": Expected arguments <'main card'> <index> [<index> ..]" +
+							"(Blue number: card value, Black number: index)");
 						return;
 					}
 
@@ -223,17 +224,17 @@ namespace MAIN
 
 					// $lg <fake> <c1> <c2>
 					if (main_card != "" && main_card != card) {
-						E.Say(channel, nick + ": Wrong card type! Continue with the main card [" + main_card + "]. (Lying allowed/desired!)");
+						E.Say(channel, nick + ": Wrong card type! Please pretend to place a card of type [" + main_card + "]!");
 						return;
 					}
 
 					if (card_upper == "Q") {
-						E.Say(channel, nick + ": The Queen is the bad card and can not be used as a main card.");
+						E.Say(channel, nick + ": The Queen is the bad card and can not be used as the main card of a stack.");
 						return;
 					}
 
 					if (!valid_main_card) {
-						E.Say(channel, nick + ": Unknown card type. Valid are: " + cards);
+						E.Say(channel, nick + ": There is no such card type. Valid are: " + cards);
 						return;
 					}
 

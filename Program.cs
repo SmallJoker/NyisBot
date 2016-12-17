@@ -31,7 +31,6 @@ namespace MAIN
 			ReadConfig("config.example.txt");
 			ReadConfig("config.txt");
 
-			Console.ReadKey();
 			E e = new E();
 
 			e.Start();
@@ -105,7 +104,6 @@ namespace MAIN
 						key = val;
 					else
 						settings[key] = (val == ".") ? "" : val;
-					Console.WriteLine(val);
 
 					read_key = true;
 					snap = false;

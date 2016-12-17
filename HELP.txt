@@ -301,7 +301,7 @@ Leaving the channel or chaning the nickname will kick you out of the game too.
 --------------------
 As the game began with 3 or more players, there's no stack to begin with, so you must start a new one.
 First, you say which card type it is, then the index of the card in your hand to put down and add as many other card indices you want. (No limits)
-> $ladd <card type> <index> <index>
+> $ladd <card type> <index> [<index> ..]
 
 So if you got the following cards in your hand and you want to start a stack with the card 6, you might have something like this:
 > $lcards
