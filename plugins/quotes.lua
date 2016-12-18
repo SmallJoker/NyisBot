@@ -12,7 +12,7 @@ db:exec[[
 ]]
 
 local function isAdmin()
-	return (L.hostmask == "~krock@works.7")
+	return (L.hostmask == L.owner_hostmask)
 end
 
 local function lsqlite_exec(query)

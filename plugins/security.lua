@@ -317,7 +317,7 @@ end
 
 function decide(text)
 	assert(type(text) == "string", "Argument #1: String expected")
-	assert(string.find(text, '?'), "No question mark found!")
+	assert(string.find(text, '?') == text:len(), "No question mark found at the end!")
 	assert(string.len(text) > 8, "Too short question!")
 
 	local rand = math.random()
