@@ -102,7 +102,6 @@ namespace MAIN
 					}
 
 					OnUserLeave(nick, hostmask, channel);
-					E.Say(channel, nick + " left the game.");
 				}
 				break;
 			#endregion
@@ -346,7 +345,8 @@ namespace MAIN
 					current_player = c.lg_nick; // Update current player index
 
 					card_msg += "( " + FormatCards(c.lg_stack_top) + ") ";
-					if (c.lg_running) {
+					if (getChannelId(channel) != null) { // Reference is not updated after deleting the channel
+
 						int last_player = WrapIndex(c, current_player - 1);
 						string nick_current = c.lg_players[current_player].nick;
 						string nick_last = c.lg_players[last_player].nick;
@@ -413,16 +413,25 @@ namespace MAIN
 
 		void OnUserLeave(string nick, string hostmask, string channel)
 		{
-			LGameChannel c = getChannelId(channel);
-			if (c == null)
+			int chan_id = 0;
+			for (; chan_id < lchans.Length; chan_id++) {
+				if (lchans[chan_id] == null)
+					continue;
+
+				if (lchans[chan_id].name == channel)
+					break;
+			}
+
+			if (chan_id == lchans.Length)
 				return;
 
+			LGameChannel c = lchans[chan_id];
 			RemovePlayer(ref c, nick);
 
 			if (c.lg_players.Count < 3 &&
-				c.lg_running) {
+					c.lg_running) {
 
-				c = null;
+				lchans[chan_id] = null;
 				E.Say(channel, "Game ended.");
 			}
 		}
@@ -460,7 +469,7 @@ namespace MAIN
 
 				List<LGPlayer> players = lchans[i].lg_players;
 				for (int k = 0; k < players.Count; k++) {
-					if (players[i].nick == nick)
+					if (players[k].nick == nick)
 						return k;
 				}
 			}
@@ -479,6 +488,10 @@ namespace MAIN
 				c.lg_nick--;
 
 			c.lg_players.RemoveAt(player_index);
+			if (c.lg_running)
+				E.Say(c.name, nick + " left the game. Next player: " + c.lg_players[c.lg_nick].nick);
+			else
+				E.Say(c.name, nick + " left the game.");
 		}
 
 		void CheckCards(string channel, string nick = null)

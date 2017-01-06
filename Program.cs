@@ -786,7 +786,10 @@ namespace MAIN
 					return;
 				}
 
-				if ((status == "PRIVMSG" || status == "NOTICE") && destination.ToUpper() != "AUTH")
+				if ((status == "PRIVMSG" || status == "NOTICE")
+						&& destination.ToUpper() != "AUTH"
+						&& destination != "*"
+						&& nick != "")
 					new Thread(delegate() {
 						OnChatMessage(nick, hostmask, destination, message);
 					}).Start();
