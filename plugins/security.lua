@@ -1,11 +1,24 @@
 ﻿-- security.lua
 -- This file is included before any chat command is executed.
 
-if not os.execute then
-	error("Do not include security.lua again, you noob.")
+local start_time = os.clock()
+
+local function timeouts(event, line)
+	if os.clock() - start_time > 5 then
+		error("THREAD STOPPED ")
+	end
+end
+debug.sethook(timeouts, "l", 1E6)
+
+
+function table.find(tab, val)
+	for k, v in pairs(tab) do
+		if v == val then
+			return k
+		end
+	end
 end
 
-local start_time = os.clock()
 
 --{ READONLY TABLES
 local function protect_table(t)
@@ -30,9 +43,6 @@ debug = protect_table(debug)
 local function protect_function(name, empty_msg, check)
 	local old_func = _G[name]
 	assert(old_func ~= nil, "Function "..name.." is nil.")
-	if check then
-		check()
-	end
 
 	_G[name] = function(arg)
 		assert(type(arg) == "string", "Argument #1: String expected.")
@@ -44,11 +54,21 @@ local function protect_function(name, empty_msg, check)
 	end
 end
 
+-- List of already included files, to prevent spam
+local included_files = {}
+
+local function check_included(file)
+	assert(not table.find(included_files, file), "Blocked from re-including "..file..".")
+	table.insert(included_files, file)
+end
+
 protect_function("dofile", "Invalid file name.", function(arg)
-	if debug.getinfo(3).source:sub(1, 1) ~= "@" then
+	local file = debug.getinfo(3).source
+	if file:sub(1, 1) ~= "@" then
 		assert(not string.find(arg, "\\") and not string.find(arg, "/"),
 				"Blocked for security reasons.")
 	end
+	check_included(arg)
 end)
 
 protect_function("loadfile", "Invalid file name.", function(arg)
@@ -56,14 +76,17 @@ protect_function("loadfile", "Invalid file name.", function(arg)
 		assert(not string.find(arg, "\\") and not string.find(arg, "/"),
 				"Blocked for security reasons.")
 	end
+	check_included(arg)
 end)
 
 protect_function("require", "Invalid file name.", function(arg)
 	assert(debug.getinfo(3).source:sub(1, 1) == "@", "Blocked for security reasons.")
+	check_included(arg)
 end)
 
-protect_function("loadstring", "Empty content!", function(arg)
+protect_function("loadstring", "Invalid file name.", function(arg)
 	assert(debug.getinfo(3).source:sub(1, 1) == "@", "Blocked for security reasons.")
+	check_included(arg)
 end)
 --} PROTECT INCLUDE FUNCTIONS
 
@@ -78,6 +101,7 @@ os.remove = nil
 os.rename = nil
 os.setlocale = nil
 
+include = dofile
 coroutine = nil
 module = nil
 package = nil
@@ -214,7 +238,7 @@ function sell(text)
 		print(text.." was thrown into the \x034fire\x0F. \x033Please wait...")
 		return
 	end
-	print("Sold "..text.." for \x033$"..(math.ceil(math.random() * 30 + 1) * 50))
+	print("Sold "..text.." for \x033$"..(math.ceil(math.random() * 100) * 10))
 end
 
 -- Russian roulette. Have fun.
@@ -227,11 +251,11 @@ function fire()
 end
 
 function help()
-	print(L.nick ..": Explanation of the basic functions: https://github.com/SmallJoker/NyisBot/blob/master/help.txt")
+	print(L.nick ..": Explanation of the basic functions: https://github.com/SmallJoker/NyisBot/blob/master/HELP.txt")
 end
 
 local function groupAction(nick, group, func)
-	assert(type(nick) == "string" and type(group) == "string", 
+	assert(type(nick) == "string" and type(group) == "string",
 			"Argument #1 and/or #2: String expected.")
 
 	local object = getUserObject(nick)
@@ -347,7 +371,7 @@ function coin(n)
 			heads = heads + 1
 		end
 	end
-	
+
 	print("Flipped one coin "..n.." times. It took "..
 			math.round(math.random() * n / 20, 2).." minutes"..
 			" to count the heads and finally got ".. heads..
