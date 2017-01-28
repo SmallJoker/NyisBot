@@ -2,14 +2,14 @@
 -- This file is included before any chat command is executed.
 
 local start_time = os.clock()
+local sethook = debug.sethook
 
 local function timeouts(event, line)
 	if os.clock() - start_time > 5 then
 		error("THREAD STOPPED ")
 	end
 end
-debug.sethook(timeouts, "l", 1E6)
-
+sethook(timeouts, "l", 1E6)
 
 function table.find(tab, val)
 	for k, v in pairs(tab) do
@@ -36,7 +36,6 @@ for k = 1, L.online do
 end
 
 L = protect_table(L)
-debug = protect_table(debug)
 --} READONLY TABLES
 
 --{ PROTECT INCLUDE FUNCTIONS
@@ -116,12 +115,16 @@ unpack = nil
 getfenv = nil
 setfenv = nil
 
-io.popen = nil
+debug.sethook = nil
 
+io.popen = nil
 io.open = nil
+io.read = nil
 io.write = nil
 io.input = nil
 io.output = nil
+
+debug = protect_table(debug)
 --} DISABLE EVIL FUNCTIONS
 
 math.randomseed(os.clock() * 1000)
