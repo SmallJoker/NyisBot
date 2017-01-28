@@ -556,7 +556,7 @@ namespace MAIN
 		{
 			Log('[' + status + "] " + content);
 
-			if (content.StartsWith("*** Found your hostname"))
+			if (content.StartsWith("*** Checking Ident"))
 				status = "439";
 
 			switch (status) {
@@ -609,7 +609,7 @@ namespace MAIN
 			case "MODE":
 				if (destination == G.settings["nickname"]) {
 					if (!identified) {
-						if (G.settings["password"] != "")
+						if (G.settings["password"].Length <= 1)
 							Say("NickServ", "identify " + G.settings["password"]);
 						identified = true;
 					}

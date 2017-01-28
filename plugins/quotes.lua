@@ -35,7 +35,7 @@ function addQuote(text)
 		return
 	end
 	if getUserstatus(L.nick) ~= 3 then
-		throwError(401, "Authentification required.")
+		throwError(401, "Authentication required.")
 		return
 	end
 	if block_addquote then
@@ -98,7 +98,7 @@ function removeQuote(id)
 		error("Argument #1: Number expected.")
 	end
 	if getUserstatus(L.nick) ~= 3 then
-		throwError(403, "Authentification required.")
+		throwError(403, "Authentication required.")
 		return
 	end
 
