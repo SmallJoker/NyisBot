@@ -169,6 +169,7 @@ namespace MAIN
 			wr.Close();
 			stream.Close();
 		}
+
 		void TellLoad()
 		{
 			tell_save_required = false;
@@ -210,6 +211,7 @@ namespace MAIN
 			rd.Close();
 			stream.Close();
 		}
+
 		void TellTell(string nick, string channel)
 		{
 			bool any = false;
@@ -217,6 +219,11 @@ namespace MAIN
 
 			for (int i = 0; i < tell_text.Count; i++) {
 				string[] msg = tell_text[i];
+				if (msg == null) {
+					E.Log("TellTell: msg != null failed", true);
+					any = true;
+					continue;
+				}
 
 				if (nick_l == msg[0] || TellSimilar(nick_l, msg[0])) {
 					E.Say(channel, nick + ": [UTC " + msg[2] + "] From " + msg[1] + ": " + msg[3]);

@@ -484,10 +484,15 @@ namespace MAIN
 			if (player_index < 0)
 				return;
 
-			if (player_index < c.lg_nick)
-				c.lg_nick--;
-
 			c.lg_players.RemoveAt(player_index);
+
+			if (player_index <= c.lg_nick) {
+				if (c.lg_nick == 0)
+					c.lg_nick = c.lg_players.Count - 1;
+				else
+					c.lg_nick--;
+			}
+
 			if (c.lg_running)
 				E.Say(c.name, nick + " left the game. Next player: " + c.lg_players[c.lg_nick].nick);
 			else

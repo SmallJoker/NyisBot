@@ -149,7 +149,8 @@ namespace MAIN
 		string address;
 		int port;
 		int last_ping;
-		bool identified,
+		bool nickname_sent,
+			identified,
 			ready_sent;
 
 		public static System.Text.Encoding enc;
@@ -191,6 +192,7 @@ namespace MAIN
 		{
 			chans = new Channel[CHANNEL_MAX];
 
+			nickname_sent = false;
 			identified = false;
 			ready_sent = false;
 
@@ -204,6 +206,10 @@ namespace MAIN
 
 			sk.Connect(ip, port);
 			Log("Connected to server");
+
+			OnBotReady += delegate() {
+				ready_sent = true;
+			};
 		}
 
 		// ASCII format 3 erase: 15
@@ -557,7 +563,7 @@ namespace MAIN
 			Log('[' + status + "] " + content);
 
 			if (content.StartsWith("*** Checking Ident"))
-				status = "439";
+				status = "001";
 
 			switch (status) {
 			#region Nicklist
@@ -594,32 +600,35 @@ namespace MAIN
 				}
 				break;
 			#endregion
-			case "376":
-				if (!ready_sent && identified) {
-					OnBotReady();
-					ready_sent = true;
+			case "376": // End of MOTD
+				if (G.settings["password"].Length <= 1 && !ready_sent) {
+					OnBotReady(); // Join channels without identification
 				}
 				break;
-			#region Knock on the door
-			case "439":
+			case "396": // Hostmask changed
+				if (!ready_sent)
+					OnBotReady();
+				break;
+			case "001": // Welcome
+			case "002": // Your host
+			case "003": // Server creation date
+			case "439": // ??
 				NickAuth(G.settings["nickname"]);
 				break;
-			#endregion
-			#region Identify
 			case "MODE":
 				if (destination == G.settings["nickname"]) {
+					int pw_len = G.settings["password"].Length;
+
 					if (!identified) {
-						if (G.settings["password"].Length <= 1)
+						if (pw_len > 1)
 							Say("NickServ", "identify " + G.settings["password"]);
 						identified = true;
 					}
-					if (!ready_sent) {
+					if ((pw_len <= 1 || isYes(G.settings["hostserv"]) == 0)
+							&& !ready_sent)
 						OnBotReady();
-						ready_sent = true;
-					}
 				}
 				break;
-			#endregion
 			case "INVITE":
 				Join(content);
 				break;
@@ -803,9 +812,10 @@ namespace MAIN
 			// Userlist
 			if (status == "332" ||
 				status == "353" ||
-				status == "366") {
+				status == "366" ||
+				status == "396") {
 
-				// <nick!host> 353 <destination> = <channel> :Nyisorn Krock @Wasted +Trivia bulldozer
+				// <nick!host> 353 <destination> = <channel> :Bottybot figther212 @boots +Trivia foobar
 				// <nick!host> <status> <destination> <channel> :Text text
 
 				int min_start = 0;
@@ -862,6 +872,9 @@ namespace MAIN
 
 		void NickAuth(string name)
 		{
+			if (nickname_sent)
+				return;
+
 			if (name.Length < 3)
 				name += "_user";
 			else if (name.Length > 14)
@@ -870,6 +883,7 @@ namespace MAIN
 			send("USER " + name + " 8 * :Testy bot");
 			send("NICK " + name);
 			Log("NICK\t " + name);
+			nickname_sent = true;
 		}
 
 		public static void Say(string destination, string text)
