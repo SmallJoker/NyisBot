@@ -1,21 +1,25 @@
-﻿using System;
+﻿//#define USE_ACC_FOR_NICKSERV
+#define LINUX
+
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-//#define USE_ACC_FOR_NICKSERV
-
 namespace MAIN
 {
 	class G
 	{
+		#if !LINUX
 		[DllImport("kernel32")]
 		private static extern bool SetConsoleCtrlHandler(EventHandler handler, bool add);
 
 		private delegate bool EventHandler(int sig);
 		static EventHandler _handler;
+		#endif
+
 		public static Dictionary<string, string> settings;
 
 		static void Main(string[] args)
@@ -44,8 +48,10 @@ namespace MAIN
 				}
 			};
 
+			#if !LINUX
 			_handler += new EventHandler(e.Stop);
 			SetConsoleCtrlHandler(_handler, true);
+			#endif
 
 			while (true) {
 				ConsoleKeyInfo i = Console.ReadKey(true);
@@ -197,7 +203,7 @@ namespace MAIN
 			ready_sent = false;
 
 			IPAddress ip = Dns.GetHostEntry(address).AddressList[0];
-			Log("Connecting to " + ip.ToString() + ":" + port);
+			Log("Connecting to IP " + ip.ToString() + " & Port " + port);
 
 			sk = new Socket(
 				ip.ToString().Contains(":") ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork,

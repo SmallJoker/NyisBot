@@ -4,9 +4,10 @@ using System.Collections.Generic;
 using System.Threading;
 
 using System.Xml;
-using OpenSSL;
-using OpenSSL.SSL;
-using OpenSSL.X509;
+using System.Net.Security;
+
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 
 namespace MAIN
 {
@@ -14,8 +15,7 @@ namespace MAIN
 	{
 		Dictionary<string, List<string>> github_projects;
 		DateTime github_updated;
-		X509List github_certs = new X509List();
-		X509Chain github_chain = new X509Chain();
+		X509CertificateCollection github_certs = new X509CertificateCollection();
 		Thread github_thread;
 
 		public m_GitHub()
@@ -116,11 +116,10 @@ namespace MAIN
 			TcpClient tc = new TcpClient("github.com", 443);
 			NetworkStream stream = tc.GetStream();
 
-			SslStream secureStream = new SslStream(stream, true,
-				new RemoteCertificateValidationHandler(ValidateRemoteCertificate));
+			SslStream secureStream = new SslStream(stream, true, ValidateRemoteCertificate);
 
-			secureStream.AuthenticateAsClient("github.com", github_certs, github_chain,
-				SslProtocols.Tls, SslStrength.All, false);
+			secureStream.AuthenticateAsClient("github.com", github_certs,
+				SslProtocols.Tls, false);
 
 
 			string content = null;
@@ -241,16 +240,16 @@ Referer: https://duckduckgo.com
 		bool ValidateRemoteCertificate(object sender,
 			X509Certificate cert,
 			X509Chain chain,
-			int depth,
-			VerifyResult result)
+			SslPolicyErrors err)
 		{
 			// If the certificate is a valid, signed certificate, return true.
-			if (result == VerifyResult.X509_V_OK)
+			if (err == SslPolicyErrors.None)
 				return true;
 
 			//Console.WriteLine("X509Certificate [{0}] Policy Error: '{1}'",
 			//	cert.Subject, result.ToString());
-
+			E.Log("ValidateRemoteCertificate: '" + cert.Subject +
+				"'. Error type: " + err.ToString());
 			return true;
 		}
 	}
