@@ -264,7 +264,7 @@ namespace MAIN
 						bool success = c.lg_players[current_player]
 							.cards.Remove(l_card);
 						if (!success)
-							E.Log("Wtf something went completely wrong. (LG)", true);
+							L.Log("m_lGame::$ladd, failed to remove cards", true);
 					}
 
 					int next_player = c.lg_nick;

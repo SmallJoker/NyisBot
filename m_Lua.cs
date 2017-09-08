@@ -9,7 +9,7 @@ namespace MAIN
 		const int LUA_TIMEOUT = 4000;
 		const int LUA_TEXT_MAX = 453;
 
-		ScriptEngine L = new ScriptEngine();
+		ScriptEngine SE = new ScriptEngine();
 		System.Text.StringBuilder lua_packet = null;
 		System.Diagnostics.Stopwatch lua_timer;
 		int lua_timeout;
@@ -60,45 +60,45 @@ namespace MAIN
 			lua_lock = false;
 			lua_packet = new System.Text.StringBuilder();
 
-			L.ResetLua();
-			L.RegisterLuaFunction(l_print, "print");
-			L.RegisterLuaFunction(l_stringldistance, "stringldistance");
-			L.RegisterLuaFunction(l_getUserstatus, "getUserstatus");
-			Lua.lua_atpanic(L.L, l_panic);
+			SE.ResetLua();
+			SE.RegisterLuaFunction(l_print, "print");
+			SE.RegisterLuaFunction(l_stringldistance, "stringldistance");
+			SE.RegisterLuaFunction(l_getUserstatus, "getUserstatus");
+			Lua.lua_atpanic(SE.L, l_panic);
 
 			#region Nick list
-			Lua.lua_newtable(L.L);
+			Lua.lua_newtable(SE.L);
 
 			int index = 0;
 			if (!is_private) {
 				foreach (KeyValuePair<string, string> _nick in E.chans[channel_id].nicks) {
-					Lua.lua_pushinteger(L.L, ++index);
-					Lua.lua_newtable(L.L);
+					Lua.lua_pushinteger(SE.L, ++index);
+					Lua.lua_newtable(SE.L);
 
-					Lua.lua_pushstring(L.L, "nick");
-					Lua.lua_pushstring(L.L, _nick.Key);
-					Lua.lua_settable(L.L, -3);
-					Lua.lua_pushstring(L.L, "hostmask");
-					Lua.lua_pushstring(L.L, _nick.Value);
+					Lua.lua_pushstring(SE.L, "nick");
+					Lua.lua_pushstring(SE.L, _nick.Key);
+					Lua.lua_settable(SE.L, -3);
+					Lua.lua_pushstring(SE.L, "hostmask");
+					Lua.lua_pushstring(SE.L, _nick.Value);
 
-					Lua.lua_settable(L.L, -3);
-					Lua.lua_settable(L.L, -3);
+					Lua.lua_settable(SE.L, -3);
+					Lua.lua_settable(SE.L, -3);
 				}
 			}
-			Lua.lua_setglobal(L.L, "N");
+			Lua.lua_setglobal(SE.L, "N");
 			#endregion
 
 			#region Public chat variables variables
-			L.CreateLuaTable("L");
-			Lua.lua_getglobal(L.L, "L");
-			L.SetTableField("channel", channel);
-			L.SetTableField("nick", nick);
-			L.SetTableField("botname", G.settings["nickname"]);
-			L.SetTableField("hostmask", hostmask);
-			L.SetTableField("isprivate", is_private);
-			L.SetTableField("online", index);
-			L.SetTableField("owner_hostmask", G.settings["owner_hostmask"]);
-			Lua.lua_pop(L.L, 1);
+			SE.CreateLuaTable("L");
+			Lua.lua_getglobal(SE.L, "L");
+			SE.SetTableField("channel", channel);
+			SE.SetTableField("nick", nick);
+			SE.SetTableField("botname", G.settings["nickname"]);
+			SE.SetTableField("hostmask", hostmask);
+			SE.SetTableField("isprivate", is_private);
+			SE.SetTableField("online", index);
+			SE.SetTableField("owner_hostmask", G.settings["owner_hostmask"]);
+			Lua.lua_pop(SE.L, 1);
 			#endregion
 
 			lua_timeout = E.HDDisON() ? LUA_TIMEOUT : (LUA_TIMEOUT + 5000);
@@ -108,25 +108,25 @@ namespace MAIN
 			int lua_error = 1;
 			string lua_output = null;
 
-			lua_error = Lua.luaL_dofile(L.L, "security.lua");
+			lua_error = Lua.luaL_dofile(SE.L, "security.lua");
 			if (lua_error == 0)
-				lua_error = Lua.luaL_dostring(L.L, message);
+				lua_error = Lua.luaL_dostring(SE.L, message);
 
 			while (lua_lock)
 				System.Threading.Thread.Sleep(100);
 
-			int type = Lua.lua_type(L.L, -1);
+			int type = Lua.lua_type(SE.L, -1);
 
 			if (type == Lua.LUA_TSTRING) {
-				int length = Lua.lua_strlen(L.L, -1);
+				int length = Lua.lua_strlen(SE.L, -1);
 				if (length > LUA_TEXT_MAX) {
 					lua_output = "<too long message>";
-					Lua.lua_pop(L.L, 1);
+					Lua.lua_pop(SE.L, 1);
 					type = Lua.LUA_TNONE;
 				}
 			}
 			if (type != Lua.LUA_TNIL && type != Lua.LUA_TNONE) {
-				lua_output = Lua.lua_tostring(L.L, -1);
+				lua_output = Lua.lua_tostring(SE.L, -1);
 			}
 
 			lua_lock = true;
@@ -134,11 +134,11 @@ namespace MAIN
 				lua_packet.Append(lua_output);
 
 			if (lua_error > 0)
-				E.Log("Errorcode from Lua: " + lua_error);
+				L.Log("m_Lua::LuaRun, errorcode = " + lua_error, true);
 
 			lua_lock = false;
 
-			L.CloseLua();
+			SE.CloseLua();
 			lua_timer.Reset();
 
 			#region Remove control characters, '\n' to space
@@ -175,8 +175,8 @@ namespace MAIN
 		bool l_checktimer()
 		{
 			if (lua_timer.ElapsedMilliseconds > lua_timeout) {
-				Lua.luaL_error(L.L, "STOP");
-				E.Log("Lua code ran too long.", true);
+				Lua.luaL_error(SE.L, "STOP");
+				L.Log("m_Lua::l_checktimer, code ran too long", true);
 				lua_timer.Reset();
 				return true;
 			}
@@ -205,15 +205,16 @@ namespace MAIN
 
 		int l_panic(IntPtr ptr)
 		{
-			E.Log("Lua panic", true);
+			L.Log("m_Lua::l_panic, panic", true);
 			return 0;
 		}
+
 		int l_print(IntPtr ptr)
 		{
 			if (l_checktimer())
 				return 0;
 
-			if (!L.CheckString("print", 1))
+			if (!SE.CheckString("print", 1))
 				return 0;
 
 			while (lua_lock)
@@ -231,14 +232,14 @@ namespace MAIN
 			if (l_checktimer())
 				return 0;
 
-			if (!L.CheckString("stringldistance", 1) ||
-				!L.CheckString("stringldistance", 2))
+			if (!SE.CheckString("stringldistance", 1) ||
+				!SE.CheckString("stringldistance", 2))
 				return 0;
 
 			string string_a = Lua.lua_tostring(ptr, 1);
 			string string_b = Lua.lua_tostring(ptr, 2);
 
-			Lua.lua_pushinteger(L.L, E.LevenshteinDistance(string_a, string_b));
+			Lua.lua_pushinteger(SE.L, E.LevenshteinDistance(string_a, string_b));
 			return 1;
 		}
 		int l_getUserstatus(IntPtr ptr)
@@ -246,7 +247,7 @@ namespace MAIN
 			if (l_checktimer())
 				return 0;
 
-			if (!L.CheckString("getUserstatus", 1))
+			if (!SE.CheckString("getUserstatus", 1))
 				return 0;
 
 			string nick = Lua.lua_tostring(ptr, 1).ToLower();
@@ -271,7 +272,7 @@ namespace MAIN
 				return 0;
 
 			if (userstatus_queue.ContainsKey(nick)) {
-				Lua.lua_pushinteger(L.L, userstatus_queue[nick]);
+				Lua.lua_pushinteger(SE.L, userstatus_queue[nick]);
 				return 1;
 			}
 
@@ -284,7 +285,7 @@ namespace MAIN
 
 			while (nickserv_time.ElapsedMilliseconds < 1500) {
 				if (userstatus_queue.ContainsKey(nick)) {
-					Lua.lua_pushinteger(L.L, userstatus_queue[nick]);
+					Lua.lua_pushinteger(SE.L, userstatus_queue[nick]);
 					return 1;
 				}
 

@@ -12,13 +12,13 @@ namespace MAIN
 {
 	class G
 	{
-		#if !LINUX
+#if !LINUX
 		[DllImport("kernel32")]
 		private static extern bool SetConsoleCtrlHandler(EventHandler handler, bool add);
 
 		private delegate bool EventHandler(int sig);
 		static EventHandler _handler;
-		#endif
+#endif
 
 		public static Dictionary<string, string> settings;
 
@@ -48,10 +48,10 @@ namespace MAIN
 				}
 			};
 
-			#if !LINUX
+#if !LINUX
 			_handler += new EventHandler(e.Stop);
 			SetConsoleCtrlHandler(_handler, true);
-			#endif
+#endif
 
 			while (true) {
 				ConsoleKeyInfo i = Console.ReadKey(true);
@@ -141,12 +141,12 @@ namespace MAIN
 		const string RANK_CHAR = "~&@%+";
 		const int MSG_BUFFER = 1024;
 		const int CHANNEL_MAX = 20;
-		public static bool running;
+		public static System.Text.Encoding enc = System.Text.Encoding.UTF8;
 		#endregion
 
 		m_Tell tell_module;
 		m_lGame lgame_module;
-		m_Lua lua_module;
+		//LUALOCK m_Lua lua_module;
 		m_GitHub github_module;
 
 		#region Other variables
@@ -159,7 +159,7 @@ namespace MAIN
 			identified,
 			ready_sent;
 
-		public static System.Text.Encoding enc;
+		public static bool running;
 		public static Channel[] chans;
 		static Random rand;
 		#endregion
@@ -185,7 +185,6 @@ namespace MAIN
 		#region Init functions
 		public E()
 		{
-			enc = System.Text.Encoding.UTF8;
 			rand = new Random((int)DateTime.UtcNow.Ticks);
 
 			address = G.settings["address"].ToLower();
@@ -203,7 +202,7 @@ namespace MAIN
 			ready_sent = false;
 
 			IPAddress ip = Dns.GetHostEntry(address).AddressList[0];
-			Log("Connecting to IP " + ip.ToString() + " & Port " + port);
+			L.Log("E::Initialize, connecting to IP " + ip.ToString() + " & Port " + port);
 
 			sk = new Socket(
 				ip.ToString().Contains(":") ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork,
@@ -211,7 +210,7 @@ namespace MAIN
 				ProtocolType.Tcp);
 
 			sk.Connect(ip, port);
-			Log("Connected to server");
+			L.Log("E::Initialize, connected to server");
 
 			OnBotReady += delegate() {
 				ready_sent = true;
@@ -262,7 +261,7 @@ namespace MAIN
 
 				if (found_line < 0) {
 					if (buffer_used + 100 >= chat_buffer.Length) {
-						Log("Line too long, reset.", true);
+						L.Log("E::LoopThread, Line too long, reset.", true);
 						chat_buffer = new char[MSG_BUFFER];
 						buffer_used = 0;
 					}
@@ -290,7 +289,7 @@ namespace MAIN
 					Console.WriteLine(e.ToString());
 				}
 			}
-			Log("Disconneted", true);
+			L.Log("E::LoopThread, Disconneted", true);
 		}
 
 		void TimeoutThread()
@@ -308,7 +307,7 @@ namespace MAIN
 
 		void Restart()
 		{
-			Log("Restarting client");
+			L.Log("E::Restart called");
 			Initialize();
 			Start(true);
 		}
@@ -320,7 +319,7 @@ namespace MAIN
 
 			tell_module = new m_Tell(is_restart);
 			lgame_module = new m_lGame(is_restart);
-			lua_module = new m_Lua();
+			//LUALOCK lua_module = new m_Lua();
 			github_module = new m_GitHub();
 
 			parser = new Thread(LoopThread);
@@ -338,7 +337,7 @@ namespace MAIN
 
 			running = false;
 
-			Log("<< QUIT");
+			L.Log("E::Stop called");
 			send("QUIT :" + G.settings["identifier"]);
 			Thread.Sleep(600);
 
@@ -365,12 +364,12 @@ namespace MAIN
 			string message_l = message.ToLower();
 			if (message_l == "\x01version\x01") {
 				Notice(nick, "\x01VERSION " + G.settings["identifier"] + "\0x01");
-				Log(nick + "\t << VERSION");
+				L.Log("E::OnChatMessage, sending version to " + nick);
 				return;
 			}
 			if (message_l == "\x01time\x01") {
 				Notice(nick, "\x01TIME " + DateTime.UtcNow.ToString("s") + "\0x01");
-				Log(nick + "\t << TIME");
+				L.Log("E::OnChatMessage, sending time to " + nick);
 				return;
 			}
 			#endregion
@@ -405,7 +404,7 @@ namespace MAIN
 				}
 
 				if (channel_id < 0) {
-					Log("Error: Channel not added yet: " + channel);
+					L.Log("E::OnChatMessage, Channel not added yet: " + channel);
 					return;
 				}
 
@@ -415,7 +414,7 @@ namespace MAIN
 			}
 			#endregion
 
-			Log(channel + "\t <" + nick + "> " + message);
+			L.Log(channel + "\t <" + nick + "> " + message);
 			#endregion
 
 			#region Pending NickServ requests
@@ -427,7 +426,7 @@ namespace MAIN
 				}
 #else
 				if (args[0] == "STATUS") {
-					lua_module.userstatus_queue[args[1]] = args[2][0] - '0';
+					//LUALOCK lua_module.userstatus_queue[args[1]] = args[2][0] - '0';
 					return;
 				}
 #endif
@@ -566,12 +565,18 @@ namespace MAIN
 
 		void OnServerMessage(string status, string destination, string content)
 		{
-			Log('[' + status + "] " + content);
+			L.Log('[' + status + "] " + content);
 
-			if (content.StartsWith("*** Checking Ident"))
+			if (content.StartsWith("*** Found your hostname"))
 				status = "001";
 
 			switch (status) {
+			case "001": // Welcome
+			case "002": // Your host
+			case "003": // Server creation date
+			case "439": // ??
+				NickAuth(G.settings["nickname"]);
+				break;
 			#region Nicklist
 			case "353": {
 					int id = -1;
@@ -582,7 +587,7 @@ namespace MAIN
 						}
 					}
 					if (id < 0) {
-						Log("Error: Channel not added yet: " + destination);
+						L.Log("E::OnServerMessage, Channel not added yet: " + destination);
 						return;
 					}
 
@@ -615,12 +620,6 @@ namespace MAIN
 				if (!ready_sent)
 					OnBotReady();
 				break;
-			case "001": // Welcome
-			case "002": // Your host
-			case "003": // Server creation date
-			case "439": // ??
-				NickAuth(G.settings["nickname"]);
-				break;
 			case "MODE":
 				if (destination == G.settings["nickname"]) {
 					int pw_len = G.settings["password"].Length;
@@ -631,7 +630,7 @@ namespace MAIN
 						identified = true;
 					}
 					if ((pw_len <= 1 || isYes(G.settings["hostserv"]) == 0)
-							&& !ready_sent)
+							&& content == "+r" && !ready_sent)
 						OnBotReady();
 				}
 				break;
@@ -643,7 +642,7 @@ namespace MAIN
 
 		void OnUserEvent(string nick, string hostmask, string status, string channel)
 		{
-			Log('[' + status + "] " + channel + "\t : " + nick);
+			L.Log('[' + status + "] " + channel + "\t : " + nick);
 
 			#region Join
 			if (status == "JOIN") {
@@ -686,7 +685,7 @@ namespace MAIN
 						return;
 					}
 				}
-				Log("Unknown channel for " + status + ": " + channel, true);
+				L.Log("E::OnUserEvent, unknown channel (" + channel + "), status = " + status, true);
 				return;
 			}
 			#endregion
@@ -742,7 +741,7 @@ namespace MAIN
 				if (status[0] == ':')
 					status = status.Substring(1);
 
-				Log("PONG to " + status);
+				L.Log("PONG to " + status);
 				send("PONG " + status);
 
 				if (OnPong != null)
@@ -797,7 +796,7 @@ namespace MAIN
 				string message = line.Substring(read_pos);
 
 				if (status == "PONG") {
-					Log(">> PONG " + hostmask);
+					L.Log(">> PONG " + hostmask);
 					return;
 				}
 
@@ -805,9 +804,7 @@ namespace MAIN
 						&& destination.ToUpper() != "AUTH"
 						&& destination != "*"
 						&& nick != "")
-					new Thread(delegate() {
-						OnChatMessage(nick, hostmask, destination, message);
-					}).Start();
+					OnChatMessage(nick, hostmask, destination, message);
 				else // numbers, AUTH request
 					OnServerMessage(status, destination, message);
 				return;
@@ -867,13 +864,13 @@ namespace MAIN
 		public void Join(string room)
 		{
 			send("JOIN " + room);
-			Log("<< JOIN " + room);
+			L.Log("<< JOIN " + room);
 		}
 
 		public void Part(string room)
 		{
 			send("PART " + room);
-			Log("<< PART " + room);
+			L.Log("<< PART " + room);
 		}
 
 		void NickAuth(string name)
@@ -888,7 +885,7 @@ namespace MAIN
 
 			send("USER " + name + " 8 * :Testy bot");
 			send("NICK " + name);
-			Log("NICK\t " + name);
+			L.Log("NICK\t " + name);
 			nickname_sent = true;
 		}
 
@@ -919,20 +916,20 @@ namespace MAIN
 		void Kick(string room, string name)
 		{
 			send("KICK " + room + ' ' + name);
-			Log("KICK\t " + name);
+			L.Log("KICK\t " + name);
 		}
 
 		static void send(string s)
 		{
 			if (!sk.Connected) {
-				Log("Tried to send packed - not connected.", true);
+				L.Log("E::send, can not send: disconnected", true);
 				return;
 			}
 
 			try {
 				sk.Send(enc.GetBytes(s + '\n'));
 			} catch (Exception ex) {
-				Log(ex.Message, true);
+				L.Dump("E::send", "", ex.ToString());
 			}
 		}
 
@@ -985,34 +982,7 @@ namespace MAIN
 
 		#endregion
 
-		public static void Log(string s, bool error = false)
-		{
-			if (s == null)
-				s = "Can not log NULL string.";
-
-			byte[] s_raw = System.Text.Encoding.ASCII.GetBytes(s);
-
-			System.Text.StringBuilder sb = new System.Text.StringBuilder(s_raw.Length);
-
-			sb.Append(DateTime.Now.ToString("T"));
-			sb.Append(' ');
-			if (error)
-				sb.Append("ERROR: ");
-
-			for (int i = 0; i < s.Length; i++) {
-				byte cur = s_raw[i];
-				if (cur < 32 && cur != 9) {
-					sb.Append('{');
-					sb.Append(cur);
-					sb.Append('}');
-				} else {
-					sb.Append((char)cur);
-				}
-			}
-
-			Console.WriteLine(sb.ToString());
-		}
-
+#if !LINUX
 		[DllImport("kernel32", CharSet = CharSet.Auto, SetLastError = true)]
 		private extern static bool GetDevicePowerState(IntPtr hDevice, out bool fOn);
 
@@ -1029,6 +999,12 @@ namespace MAIN
 			}
 			return false;
 		}
+#else
+		public static bool HDDisON()
+		{
+			return true;
+		}
+#endif
 
 		public static void Shuffle<T>(ref List<T> list)
 		{

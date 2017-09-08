@@ -181,7 +181,7 @@ namespace MAIN
 			System.IO.BinaryReader rd = new System.IO.BinaryReader(stream);
 
 			if (rd.ReadString() != "TT01") {
-				E.Log("Tell database is not a valid db file.", true);
+				L.Log("m_Tell::TellLoad, invalid database magic", true);
 				rd.Close();
 				stream.Close();
 				return;
@@ -220,7 +220,7 @@ namespace MAIN
 			for (int i = 0; i < tell_text.Count; i++) {
 				string[] msg = tell_text[i];
 				if (msg == null) {
-					E.Log("TellTell: msg != null failed", true);
+					L.Log("m_Tell::TellTell, msg == null", true);
 					any = true;
 					continue;
 				}

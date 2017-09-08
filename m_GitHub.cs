@@ -45,7 +45,7 @@ namespace MAIN
 		{
 			github_projects = new Dictionary<string, List<string>>();
 			if (!System.IO.File.Exists("github_projects.txt")) {
-				E.Log("GHPF: File 'github_projects.txt' not found!");
+				L.Log("m_GitHub::LoadGithubProjects, File 'github_projects.txt' not found");
 				return;
 			}
 
@@ -68,25 +68,20 @@ namespace MAIN
 				if (chans.Count > 0) {
 					github_projects.Add(data[0], chans);
 				} else {
-					E.Log("GHPF: Project " + data[0] + " does not have any (valid) channels!");
+					L.Log("m_GitHub::LoadGithubProjects, " + data[0] + " has no (valid) channels");
 				}
 			}
 
-			E.Log("GHPF: Found and added " + github_projects.Count + " projects!");
+			L.Log("m_GitHub::LoadGithubProjects, entries = " + github_projects.Count);
 		}
 
 		void NewsFeedThread()
 		{
-			E.Log("Github news feed started!");
+			L.Log("m_GitHub::NewsFeedThread start");
 			//github_updated -= new TimeSpan(2, 0, 0);
+			E.running = true;
 			while (E.running) {
-				for (int i = 0; i < 900; i++) {
-					if (!E.running)
-						return;
-
-					Thread.Sleep(1000);
-				}
-
+				Thread.Sleep(2000);
 				foreach (KeyValuePair<string, List<string>> repo in github_projects) {
 					if (!E.running)
 						return;
@@ -94,15 +89,19 @@ namespace MAIN
 					try {
 						GetGithubCommits(repo);
 					} catch (Exception ex) {
-						E.Log("Failed to read feed " + repo.Key + " properly.");
-						Console.WriteLine(ex.ToString());
-						Thread.Sleep(2000);
+						L.Dump("m_GitHub::NewsFeedThread", repo.Key, ex.ToString());
 					}
 				}
-				E.Log("Github news check completed.");
+				L.Log("m_GitHub::NewsFeedThread check completed");
 				github_updated = DateTime.Now;
+				for (int i = 0; i < 60 * 5; i++) {
+					if (!E.running)
+						return;
+
+					Thread.Sleep(1000);
+				}
 			}
-			E.Log("Github news feed stopped");
+			L.Log("m_GitHub::NewsFeedThread stop");
 		}
 
 		void GetGithubCommits(KeyValuePair<string, List<string>> repo)
@@ -121,9 +120,8 @@ namespace MAIN
 			secureStream.AuthenticateAsClient("github.com", github_certs,
 				SslProtocols.Tls, false);
 
-
-			string content = null;
-			RequestResponse(secureStream, "/" + repo_info[0] + "/commits/" + branch + ".atom", ref content);
+			string url = "/" + repo_info[0] + "/commits/" + branch + ".atom";
+			string content = RequestResponse(secureStream, url);
 			secureStream.Close();
 			stream.Close();
 
@@ -132,7 +130,12 @@ namespace MAIN
 			#endregion
 
 			XmlDocument docwest = new XmlDocument();
-			docwest.LoadXml(content);
+			try {
+				docwest.LoadXml(content);
+			} catch(Exception e) {
+				L.Dump("m_GitHub::GetGithubCommits", url, e.Message + "\n" + e.ToString());
+				return;
+			}
 
 			int count = 0;
 
@@ -172,11 +175,10 @@ namespace MAIN
 @"GET {0} HTTP/1.1
 Host: github.com
 User-Agent: Mozilla/5.0 (NyisBot)
-Referer: https://duckduckgo.com
 
 ";
 
-		void RequestResponse(SslStream stream, string address, ref string content)
+		string RequestResponse(SslStream stream, string address)
 		{
 			// Prepare header text
 			string head_str = string.Format(github_request_header, address);
@@ -185,56 +187,26 @@ Referer: https://duckduckgo.com
 			byte[] header_sent = E.enc.GetBytes(head_str);
 			stream.Write(header_sent, 0, header_sent.Length);
 			stream.Flush();
+			Thread.Sleep(500);
 
-			System.Text.StringBuilder sb = new System.Text.StringBuilder();
-
-			int LEN = 1024;
-			byte[] data = new byte[LEN];
-			int pos = 0;
-			int read = 0;
+			System.IO.MemoryStream ms = new System.IO.MemoryStream();
+			int r = 0;
 			while (true) {
-				Thread.Sleep(read == LEN ? 50 : 500);
-				read = stream.Read(data, 0, LEN);
-				sb.Append(E.enc.GetString(data, 0, read));
-				pos += read;
-				if (read == 0)
+				r = stream.ReadByte();
+				if (r == -1)
 					break;
+				ms.WriteByte((byte)r);
 			}
-			data = null;
+			string content = E.enc.GetString(ms.ToArray());
+			ms.Close();
 
-			int old_pos = 0;
-			bool snap = false;
-
-			// Stupid SSL adds random hashes
-			for (pos = 1; pos < sb.Length - 2; pos++) {
-				if (sb[pos] == '\r')
-					continue;
-
-				char next = sb[pos + 1];
-				if (sb[pos - 1] == '\r' && sb[pos] == '\n'
-					&& ((next >= '0' && next <= '9')
-						|| (next >= 'a' && next <= 'f'))
-					&& !snap) {
-
-					snap = true;
-					continue;
-				}
-
-				if (snap) {
-					if (sb[pos] == '\n')
-						snap = false;
-				} else {
-					if (old_pos != pos)
-						sb[old_pos] = sb[pos];
-					old_pos++;
-				}
+			int content_start = content.IndexOf("<?xml", 0, Math.Min(content.Length, 4096));
+			if (content_start < 0) {
+				L.Log("m_GitHub::RequestResponse failed! " + address);
+				return null;
 			}
-			sb.Length = old_pos;
-			content = sb.ToString();
-			sb = null;
-
-			int content_start = content.IndexOf("<?xml", 0, 2048);
-			content = content.Substring(content_start);
+			int content_end = content.LastIndexOf('>', content.Length - 1);
+			return content.Substring(content_start, content_end - content_start + 1);
 		}
 
 		bool ValidateRemoteCertificate(object sender,
@@ -248,7 +220,7 @@ Referer: https://duckduckgo.com
 
 			//Console.WriteLine("X509Certificate [{0}] Policy Error: '{1}'",
 			//	cert.Subject, result.ToString());
-			E.Log("ValidateRemoteCertificate: '" + cert.Subject +
+			L.Log("m_GitHub::ValidateRemoteCertificate, '" + cert.Subject +
 				"'. Error type: " + err.ToString());
 			return true;
 		}
