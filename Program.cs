@@ -54,11 +54,15 @@ namespace MAIN
 #endif
 
 			while (true) {
-				ConsoleKeyInfo i = Console.ReadKey(true);
-				if (i.Key == ConsoleKey.Escape) {
+				string str = Console.ReadLine();
+				if (str == "q" ||
+				    str == "exit" ||
+				    str == "quit") {
 					e.Stop();
+					Thread.Sleep(1000);
 					break;
 				}
+				E.send(str);
 			}
 		}
 
@@ -150,7 +154,8 @@ namespace MAIN
 		m_GitHub github_module;
 
 		#region Other variables
-		static Socket sk;
+		static TcpClient cli;
+		static System.Net.Security.SslStream stream;
 		Thread parser;
 		string address;
 		int port;
@@ -201,15 +206,11 @@ namespace MAIN
 			identified = false;
 			ready_sent = false;
 
-			IPAddress ip = Dns.GetHostEntry(address).AddressList[0];
-			L.Log("E::Initialize, connecting to IP " + ip.ToString() + " & Port " + port);
+			L.Log("E::Initialize, connecting to IP " + address + " & Port " + port);
+			cli = new TcpClient(address, port);
+			stream = new System.Net.Security.SslStream(cli.GetStream(), false);
+			stream.AuthenticateAsClient(address);
 
-			sk = new Socket(
-				ip.ToString().Contains(":") ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork,
-				SocketType.Stream,
-				ProtocolType.Tcp);
-
-			sk.Connect(ip, port);
 			L.Log("E::Initialize, connected to server");
 
 			OnBotReady += delegate() {
@@ -220,73 +221,55 @@ namespace MAIN
 		// ASCII format 3 erase: 15
 		void LoopThread()
 		{
-			char[] chat_buffer = new char[MSG_BUFFER];
+			byte[] chat_buffer = new byte[MSG_BUFFER];
 			int buffer_used = 0;
 
-			while (sk.Connected && running) {
+			while (cli.Connected && running) {
 				int free_chars = chat_buffer.Length - buffer_used;
-				bool short_sleep = sk.Available > MSG_BUFFER;
-
-				#region Read incoming packets
-				if (sk.Available > 1 && free_chars >= 100) {
-					int buf_size = (free_chars < sk.Available) ? free_chars : sk.Available;
-					byte[] buffer = new byte[buf_size];
-					sk.Receive(buffer);
-					char[] textReceived = enc.GetChars(buffer);
-
-					// Filter packet into buffer
-					int pos = 0;
-					for (int i = 0; i < textReceived.Length; i++) {
-						char cur = textReceived[i];
-						if (cur == 0 || cur == '\r')
-							continue;
-
-						chat_buffer[buffer_used + pos] = cur;
-						pos++;
-					}
-					buffer_used += pos;
-					last_ping = 360; // Refill last ping
+				int rec_len = 0;
+				if (cli.Available > 0 && free_chars > 0) {
+					rec_len = stream.Read(chat_buffer, buffer_used, free_chars);
+					buffer_used += rec_len;
 				}
-				#endregion
-				Thread.Sleep(short_sleep ? 20 : 100);
 
-				// Search for newline in buffer
-				int found_line = -1;
-				for (int i = 0; i < buffer_used; i++) {
-					if (chat_buffer[i] == '\n') {
-						found_line = i + 1;
+				Thread.Sleep(50);
+				if (rec_len > 1)
+					last_ping = 360; // Refill last ping
+
+				while (true) {
+					// Search for newline in buffer
+					int found_line = Array.IndexOf(chat_buffer, (byte)'\n', 0, buffer_used);
+
+					string wat = enc.GetString(chat_buffer, 0, buffer_used);
+					if (found_line == -1) {
+						// Reset buffer, discard.
+						if (buffer_used == chat_buffer.Length) {
+							L.Log("E::LoopThread, Line too long, reset.", true);
+							chat_buffer = new byte[MSG_BUFFER];
+							buffer_used = 0;
+						}
 						break;
 					}
-				}
+					found_line++;
 
-				if (found_line < 0) {
-					if (buffer_used + 100 >= chat_buffer.Length) {
-						L.Log("E::LoopThread, Line too long, reset.", true);
-						chat_buffer = new char[MSG_BUFFER];
-						buffer_used = 0;
+					// Add message to the chat buffer, remove '\n' and beginning ':'
+					int offset = (chat_buffer[0] == ':') ? 1 : 0;
+					int length = found_line - 2 - offset;
+
+					string query = enc.GetString(chat_buffer, offset, length);
+
+					// Shift back in array
+					for (int i = 0; i < buffer_used - found_line; i++)
+						chat_buffer[i] = chat_buffer[found_line + i];
+
+					buffer_used -= found_line;
+
+					try {
+						FetchChat(query);
+					} catch (Exception e) {
+						Console.WriteLine(query);
+						Console.WriteLine(e.ToString());
 					}
-					continue;
-				}
-
-				// Add message to the chat buffer, remove '\n' and beginning ':'
-				int offset = (chat_buffer[0] == ':') ? 1 : 0;
-
-				char[] msg = new char[found_line - 1 - offset];
-				for (int i = 0; i < msg.Length; i++)
-					msg[i] = chat_buffer[i + offset];
-
-				// Shift back in array
-				for (int i = 0; i < buffer_used - found_line; i++)
-					chat_buffer[i] = chat_buffer[found_line + i];
-
-				buffer_used -= found_line;
-
-				string query = new string(msg);
-				try {
-					FetchChat(query);
-				} catch (Exception e) {
-					Console.WriteLine(query);
-					Console.WriteLine(e.ToString());
 				}
 			}
 			L.Log("E::LoopThread, Disconneted", true);
@@ -294,7 +277,7 @@ namespace MAIN
 
 		void TimeoutThread()
 		{
-			while (sk.Connected) {
+			while (cli.Connected) {
 				Thread.Sleep(1000);
 				if ((--last_ping) == 0) {
 					running = false;
@@ -345,7 +328,9 @@ namespace MAIN
 				parser.Abort();
 
 			Thread.Sleep(600);
-			sk.Disconnect(false);
+			stream.Flush();
+			stream.Close();
+			cli.Close();
 
 			for (int i = 0; i < chans.Length; i++)
 				chans[i] = null;
@@ -567,7 +552,7 @@ namespace MAIN
 		{
 			L.Log('[' + status + "] " + content);
 
-			if (content.StartsWith("*** Found your hostname"))
+			if (content == "*** Checking Ident")
 				status = "001";
 
 			switch (status) {
@@ -847,11 +832,13 @@ namespace MAIN
 			}
 			#endregion
 
-			if (status == "333" ||
+			if (status == "004" ||
+				status == "005" ||
 				status == "252" ||
 				status == "254" ||
 				status == "265" ||
-				status == "266") {
+				status == "266" ||
+				status == "333") {
 				
 				// Ignore stuff that's not supported yet
 				return;
@@ -919,15 +906,15 @@ namespace MAIN
 			L.Log("KICK\t " + name);
 		}
 
-		static void send(string s)
+		public static void send(string s)
 		{
-			if (!sk.Connected) {
+			if (!cli.Connected) {
 				L.Log("E::send, can not send: disconnected", true);
 				return;
 			}
 
 			try {
-				sk.Send(enc.GetBytes(s + '\n'));
+				stream.Write(enc.GetBytes(s + '\n'));
 			} catch (Exception ex) {
 				L.Dump("E::send", "", ex.ToString());
 			}

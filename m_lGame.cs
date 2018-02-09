@@ -426,13 +426,14 @@ namespace MAIN
 				return;
 
 			LGameChannel c = lchans[chan_id];
-			RemovePlayer(ref c, nick);
 
 			if (c.lg_players.Count < 3 &&
-					c.lg_running) {
+				c.lg_running) {
 
 				lchans[chan_id] = null;
 				E.Say(channel, "Game ended.");
+			} else {
+				RemovePlayer(ref c, nick);
 			}
 		}
 
