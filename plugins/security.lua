@@ -89,7 +89,7 @@ protect_function("loadstring", "Invalid file name.", function(arg)
 end)
 --} PROTECT INCLUDE FUNCTIONS
 
-local start_time = os.clock()
+start_time = os.clock()
 
 --{ DISABLE EVIL FUNCTIONS
 os.execute = nil

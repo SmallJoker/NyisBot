@@ -38,7 +38,7 @@ namespace MAIN
 			E e = new E();
 
 			e.Start();
-			e.OnBotReady += delegate() {
+			E.OnBotReady += delegate() {
 				string[] chans = settings["channels"].Split(' ');
 				for (int i = 0; i < chans.Length; i++) {
 					if (chans[i].Length < 2 || chans[i][0] != '#')
@@ -139,7 +139,7 @@ namespace MAIN
 		}
 	}
 
-	class E
+	class E : Actions
 	{
 		#region Constants
 		const string RANK_CHAR = "~&@%+";
@@ -150,7 +150,7 @@ namespace MAIN
 
 		m_Tell tell_module;
 		m_lGame lgame_module;
-		//LUALOCK m_Lua lua_module;
+		m_Lua lua_module;
 		m_GitHub github_module;
 
 		#region Other variables
@@ -169,24 +169,6 @@ namespace MAIN
 		static Random rand;
 		#endregion
 
-		#region Callbacks
-		public Action OnBotReady;
-
-		public delegate void OnUserDel(string nick, string hostmask, string channel);
-		public static OnUserDel OnUserJoin;
-		public static OnUserDel OnUserLeave;
-		public delegate void OnUserRenameDel(string nick, string hostmask, string old_nick);
-		public static OnUserRenameDel OnUserRename;
-		public delegate void OnUserSayDel(string nick, string hostmask, string channel, string message,
-				int length, int channel_id, ref string[] args);
-		public static OnUserSayDel OnUserSay;
-
-		public delegate void OnLoadDel(string nick, string hostmask, string old_nick);
-		public static Action OnExit, OnPong;
-		public delegate void OnChannelJoinDel(ref Channel chan);
-		public static OnChannelJoinDel OnChannelJoin;
-		#endregion
-
 		#region Init functions
 		public E()
 		{
@@ -200,6 +182,7 @@ namespace MAIN
 
 		void Initialize()
 		{
+			ResetActions();
 			chans = new Channel[CHANNEL_MAX];
 
 			nickname_sent = false;
@@ -240,7 +223,6 @@ namespace MAIN
 					// Search for newline in buffer
 					int found_line = Array.IndexOf(chat_buffer, (byte)'\n', 0, buffer_used);
 
-					string wat = enc.GetString(chat_buffer, 0, buffer_used);
 					if (found_line == -1) {
 						// Reset buffer, discard.
 						if (buffer_used == chat_buffer.Length) {
@@ -406,12 +388,14 @@ namespace MAIN
 			if (nick == "NickServ" && length >= 3) {
 #if USE_ACC_FOR_NICKSERV
 				if (args[1] == "ACC") {
-					lua_module.userstatus_queue[args[0]] = args[2][0] - '0';
+					if (lua_module != null)
+						lua_module.userstatus_queue[args[0]] = args[2][0] - '0';
 					return;
 				}
 #else
 				if (args[0] == "STATUS") {
-					//LUALOCK lua_module.userstatus_queue[args[1]] = args[2][0] - '0';
+					if (lua_module != null)
+						lua_module.userstatus_queue[args[1]] = args[2][0] - '0';
 					return;
 				}
 #endif
@@ -649,8 +633,7 @@ namespace MAIN
 					chans[id] = new Channel(channel);
 
 				chans[id].nicks[nick] = hostmask;
-				if (OnUserJoin != null)
-					OnUserJoin(nick, hostmask, channel);
+				OnUserJoin(nick, hostmask, channel);
 				return;
 			}
 			#endregion
@@ -665,8 +648,7 @@ namespace MAIN
 						else
 							chans[i].nicks.Remove(nick);
 
-						if (OnUserLeave != null)
-							OnUserLeave(nick, hostmask, channel);
+						OnUserLeave(nick, hostmask, channel);
 						return;
 					}
 				}
@@ -682,12 +664,12 @@ namespace MAIN
 							chans[i].nicks.Remove(nick);
 							if (status == "NICK")
 								chans[i].nicks[channel] = hostmask;
-							else if (OnUserLeave != null)
+							else
 								OnUserLeave(nick, hostmask, chans[i].name);
 						}
 					}
 				}
-				if (status == "NICK" && OnUserRename != null)
+				if (status == "NICK")
 					OnUserRename(channel, hostmask, nick);
 				return;
 			}
