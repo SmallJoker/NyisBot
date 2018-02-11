@@ -427,7 +427,7 @@ namespace MAIN
 
 			LGameChannel c = lchans[chan_id];
 
-			if (c.lg_players.Count < 3 &&
+			if (c.lg_players.Count <= 3 &&
 				c.lg_running) {
 
 				lchans[chan_id] = null;
@@ -506,32 +506,25 @@ namespace MAIN
 			if (c == null)
 				return;
 
-			List<string> remove = new List<string>();
+			List<string> player_remove = new List<string>();
 
 			int max_len = c.lg_players.Count;
 			for (int i = 0; i < max_len; i++) {
 				LGPlayer info = c.lg_players[i];
 				int amount = info.cards.Count;
 
-				if (amount == 0) {
-					if (nick == null || (nick != null && nick != info.nick)) {
-						E.Say(channel, info.nick + " has no cards left. Congratulations, you're a winner.");
-						remove.Add(info.nick);
-					}
-				} else if (amount <= 2) {
-					if (nick != null && nick == info.nick) {
-						E.Say(channel, info.nick + " has only " + amount + " cards left!");
-					}
-				} else if (amount > 4) {
+				if (amount >= 4) {
 					Dictionary<string, int> cards = new Dictionary<string, int>();
+					// Count cards
 					foreach (string card in info.cards) {
 						if (cards.ContainsKey(card))
 							cards[card]++;
 						else
 							cards.Add(card, 1);
 					}
+					// Discard pairs
 					foreach (KeyValuePair<string, int> card in cards) {
-						if (card.Value == 4) {
+						if (card.Value >= 4) {
 							for (int x = 0; x < 4; x++)
 								c.lg_players[i].cards.Remove(card.Key);
 
@@ -541,9 +534,20 @@ namespace MAIN
 						}
 					}
 				}
+
+				if (amount == 0) {
+					if (nick == null || (nick != null && nick != info.nick)) {
+						E.Say(channel, info.nick + " has no cards left. Congratulations, you're a winner.");
+						player_remove.Add(info.nick);
+					}
+				} else if (amount <= 3) {
+					if (nick != null && nick == info.nick) {
+						E.Say(channel, info.nick + " has only " + amount + " cards left!");
+					}
+				}
 			}
 
-			foreach (string p in remove)
+			foreach (string p in player_remove)
 				OnUserLeave(p, "", channel);
 		}
 
