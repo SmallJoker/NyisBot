@@ -1,10 +1,12 @@
 address = irc.losslessone.com
-port    = 6667
+port    = 6697
 
-identifier = IRC bot - Created by Krock, handcrafted. [C#] 2014-2017
+identifier = IRC bot - Created by Krock, handcrafted. [C#] 2014-2018
 
 nickname = NyisBot
 password = .
+
+hostserv = false
 
 /* Your hostmask. It unlocks the admin commands */
 owner_hostmask = ~nickname@host.mask
