@@ -25,8 +25,8 @@ namespace MAIN
 			E.OnUserSay += OnUserSay;
 		}
 
-		void OnUserSay(string nick, string hostmask, string channel, string message,
-			int length, int channel_id, ref string[] args)
+		void OnUserSay(string nick, ref Channel chan, string message,
+			int length, ref string[] args)
 		{
 			if (args[0] != "$" && args[0] != "$lua")
 				return;
@@ -45,17 +45,16 @@ namespace MAIN
 				E.Notice(nick, "Too short input text.");
 				return;
 			}
-
+			Channel c = chan;
 			lua_thread = new Thread(delegate() {
-				E.Say(channel, LuaRun(nick, hostmask, channel, str, channel_id));
+				E.Say(c.name, LuaRun(nick, ref c, str));
 			});
 			lua_thread.Start();
 		}
 
-		string LuaRun(string nick, string hostmask, string channel,
-			string message, int channel_id)
+		string LuaRun(string nick, ref Channel chan, string message)
 		{
-			bool is_private = channel[0] != '#';
+			bool is_private = chan.name[0] != '#';
 			// Initialize packet lock, packet and start time
 			lua_lock = false;
 			lua_packet = new System.Text.StringBuilder();
@@ -71,17 +70,18 @@ namespace MAIN
 
 			int index = 0;
 			if (!is_private) {
-				foreach (KeyValuePair<string, string> _nick in E.chans[channel_id].nicks) {
+				foreach (KeyValuePair<string, string> _nick in chan.nicks) {
 					Lua.lua_pushinteger(SE.L, ++index);
 					Lua.lua_newtable(SE.L);
 
 					Lua.lua_pushstring(SE.L, "nick");
 					Lua.lua_pushstring(SE.L, _nick.Key);
 					Lua.lua_settable(SE.L, -3);
+
 					Lua.lua_pushstring(SE.L, "hostmask");
 					Lua.lua_pushstring(SE.L, _nick.Value);
-
 					Lua.lua_settable(SE.L, -3);
+
 					Lua.lua_settable(SE.L, -3);
 				}
 			}
@@ -91,14 +91,14 @@ namespace MAIN
 			#region Public chat variables variables
 			SE.CreateLuaTable("L");
 			Lua.lua_getglobal(SE.L, "L");
-			SE.SetTableField("channel", channel);
+			SE.SetTableField("channel", chan.name);
 			SE.SetTableField("nick", nick);
 			SE.SetTableField("botname", G.settings["nickname"]);
-			SE.SetTableField("hostmask", hostmask);
+			SE.SetTableField("hostmask", chan.nicks[nick]);
 			SE.SetTableField("isprivate", is_private);
 			SE.SetTableField("online", index);
 			SE.SetTableField("owner_hostmask", G.settings["owner_hostmask"]);
-			Lua.lua_pop(SE.L, 1);
+			Lua.lua_settop(SE.L, 0);
 			#endregion
 
 			lua_timeout = E.HDDisON() ? LUA_TIMEOUT : (LUA_TIMEOUT + 5000);
@@ -172,49 +172,27 @@ namespace MAIN
 		}
 
 
-		bool l_checktimer()
+		bool isTimeout(IntPtr ptr)
 		{
 			if (lua_timer.ElapsedMilliseconds > lua_timeout) {
-				Lua.luaL_error(SE.L, "STOP");
-				L.Log("m_Lua::l_checktimer, code ran too long", true);
-				lua_timer.Reset();
+				L.Log("m_Lua::isTimeout, code ran too long");
+				Lua.luaL_error(ptr, "STOP");
 				return true;
 			}
 			return false;
 		}
-		/*void Lua_breakdown()
-		{
-			lua_timer.Start();
-			while (lua_timer.IsRunning) {
-				if (lua_timer.ElapsedMilliseconds > lua_timeout) {
-					Lua.lua_settop(L.L, 0);
-
-					Lua.luaL_error(L.L, "Code execution interrupted.");
-
-					Lua.lua_getglobal(L.L, "os");
-					Lua.lua_pushliteral(L.L, "exit");
-					int r = Lua.lua_pcall(L.L, 0, 0, 0);
-					if (r != 0) {
-						log(Lua.lua_tostring(L.L, -1), true);
-						Lua.lua_pop(L.L, 1);
-					}
-					lua_timer.Reset();
-				}
-			}
-		}*/
 
 		int l_panic(IntPtr ptr)
 		{
 			L.Log("m_Lua::l_panic, panic", true);
+			for (int i = 1; i <= Lua.lua_gettop(ptr); i++)
+				Console.WriteLine("Panic [" + i + "]: " + Lua.lua_tostring(ptr, i));
 			return 0;
 		}
 
 		int l_print(IntPtr ptr)
 		{
-			if (l_checktimer())
-				return 0;
-
-			if (!SE.CheckString("print", 1))
+			if (!SE.CheckString(ptr, "print", 1))
 				return 0;
 
 			while (lua_lock)
@@ -229,11 +207,11 @@ namespace MAIN
 		}
 		int l_stringldistance(IntPtr ptr)
 		{
-			if (l_checktimer())
+			if (isTimeout(ptr))
 				return 0;
 
-			if (!SE.CheckString("stringldistance", 1) ||
-				!SE.CheckString("stringldistance", 2))
+			if (!SE.CheckString(ptr, "stringldistance", 1) ||
+				!SE.CheckString(ptr, "stringldistance", 2))
 				return 0;
 
 			string string_a = Lua.lua_tostring(ptr, 1);
@@ -244,10 +222,10 @@ namespace MAIN
 		}
 		int l_getUserstatus(IntPtr ptr)
 		{
-			if (l_checktimer())
+			if (isTimeout(ptr))
 				return 0;
 
-			if (!SE.CheckString("getUserstatus", 1))
+			if (!SE.CheckString(ptr, "getUserstatus", 1))
 				return 0;
 
 			string nick = Lua.lua_tostring(ptr, 1).ToLower();

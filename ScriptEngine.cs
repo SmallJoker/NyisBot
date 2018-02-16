@@ -1,4 +1,4 @@
-/* 
+/*
  * Source code from: http://www.tuxenconsulting.dk/lua.zip
  */
 
@@ -147,10 +147,12 @@ namespace MAIN
 		public void CreateLuaTable(string tableName)
 		{
 			Lua.lua_getglobal(L, tableName);
+			bool is_nil = IsTopNil;
+
 			// Back to root
 			Lua.lua_pop(L, 1);
 
-			if (IsTopNil) {
+			if (is_nil) {
 				Lua.lua_newtable(L);
 				Lua.lua_setglobal(L, tableName);
 				//stack is empty
@@ -252,7 +254,7 @@ namespace MAIN
 
 		/// <summary>
 		/// Sets a field of a lua table to a .net variable value i.e. luaTable.someField = value of .net variable.
-		/// After the call the lua stack is balanced.
+		/// After the call the lua table is still on top of the stack.
 		/// </summary>
 		/// <param name="tableName">name of the lua table</param>
 		/// <param name="fieldName">name of the field</param>
@@ -274,8 +276,6 @@ namespace MAIN
 			//set field of table to value: tableName[fieldName]=value
 			Lua.lua_settable(L, -3);
 			//pop table of the stack
-			Lua.lua_pop(L, 1);
-			//stack is balanced
 		}
 
 		/// <summary>
@@ -424,21 +424,21 @@ namespace MAIN
 			Lua.lua_pushnil(L);
 		}
 
-		public bool CheckString(string prefix, int idx)
+		public bool CheckString(IntPtr Q, string prefix, int idx)
 		{
-			if (Lua.lua_type(L, idx) == Lua.LUA_TSTRING)
+			if (Lua.lua_type(Q, idx) == Lua.LUA_TSTRING)
 				return true;
 
-			Lua.luaL_error(L, prefix + ": Invalid argument #" + idx + ". Type 'string' expected");
+			Lua.luaL_error(Q, prefix + ": Invalid argument #" + idx + ". Type 'string' expected");
 			return false;
 		}
 
-		public bool CheckNumber(string prefix, int idx)
+		public bool CheckNumber(IntPtr Q, string prefix, int idx)
 		{
-			if (Lua.lua_type(L, idx) == Lua.LUA_TNUMBER)
+			if (Lua.lua_type(Q, idx) == Lua.LUA_TNUMBER)
 				return true;
 
-			Lua.luaL_error(L, prefix + ": Invalid argument #" + idx + ". Type 'number' expected");
+			Lua.luaL_error(Q, prefix + ": Invalid argument #" + idx + ". Type 'number' expected");
 			return false;
 		}
 	}
