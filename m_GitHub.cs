@@ -5,9 +5,7 @@ using System.Threading;
 
 using System.Xml;
 using System.Net.Security;
-
-using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
+using System.Diagnostics;
 
 namespace MAIN
 {
@@ -15,7 +13,6 @@ namespace MAIN
 	{
 		Dictionary<string, List<string>> github_projects;
 		DateTime github_updated;
-		X509CertificateCollection github_certs = new X509CertificateCollection();
 		Thread github_thread;
 
 		public m_GitHub()
@@ -27,18 +24,18 @@ namespace MAIN
 			E.OnUserSay += OnUserSay;
 		}
 
-		void OnUserSay(string nick, string hostmask, string channel, string message,
-			int length, int channel_id, ref string[] args)
+		void OnUserSay(string nick, ref Channel chan, string message,
+			int length, ref string[] args)
 		{
 			if (args[0] != "$updghp")
 				return;
 
-			if (hostmask != G.settings["owner_hostmask"]) {
-				E.Say(channel, nick + ": who are you?");
+			if (chan.nicks[nick] != G.settings["owner_hostmask"]) {
+				E.Say(chan.name, nick + ": who are you?");
 				return;
 			}
 			LoadGithubProjects();
-			E.Say(channel, nick + ": Updated! Got in total " + github_projects.Count + " Github projects to check.");
+			E.Say(chan.name, nick + ": Updated! Got in total " + github_projects.Count + " Github projects to check.");
 		}
 
 		void LoadGithubProjects()
@@ -112,18 +109,8 @@ namespace MAIN
 				branch = repo_info[1];
 
 			#region Download
-			TcpClient tc = new TcpClient("github.com", 443);
-			NetworkStream stream = tc.GetStream();
-
-			SslStream secureStream = new SslStream(stream, true, ValidateRemoteCertificate);
-
-			secureStream.AuthenticateAsClient("github.com", github_certs,
-				SslProtocols.Tls, false);
-
 			string url = "/" + repo_info[0] + "/commits/" + branch + ".atom";
-			string content = RequestResponse(secureStream, url);
-			secureStream.Close();
-			stream.Close();
+			string content = RequestResponse(url);
 
 			if (content == null)
 				return;
@@ -171,58 +158,38 @@ namespace MAIN
 			}
 		}
 
-		const string github_request_header =
-@"GET {0} HTTP/1.1
-Host: github.com
-User-Agent: Mozilla/5.0 (NyisBot)
-
-";
-
-		string RequestResponse(SslStream stream, string address)
+		string RequestResponse(string address)
 		{
-			// Prepare header text
-			string head_str = string.Format(github_request_header, address);
+			ProcessStartInfo info = new ProcessStartInfo();
+			info.FileName = "curl";
+			info.Arguments = "--http1.1 --url https://github.com" + address;
+			info.UseShellExecute = false;
+			info.RedirectStandardOutput = true;
+			info.RedirectStandardError = true;
+			Process curl = Process.Start(info);
+			System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
-			// Write header to the network stream
-			byte[] header_sent = E.enc.GetBytes(head_str);
-			stream.Write(header_sent, 0, header_sent.Length);
-			stream.Flush();
-			Thread.Sleep(500);
+			string last_content = "";
+			do {
+				last_content = curl.StandardOutput.ReadLine();
+				sb.AppendLine(last_content);
+				// Wait for </feed> or similar for error pages
+			} while (!last_content.StartsWith("</"));
 
-			System.IO.MemoryStream ms = new System.IO.MemoryStream();
-			int r = 0;
-			while (true) {
-				r = stream.ReadByte();
-				if (r == -1)
-					break;
-				ms.WriteByte((byte)r);
-			}
-			string content = E.enc.GetString(ms.ToArray());
-			ms.Close();
+			curl.Close();
 
-			int content_start = content.IndexOf("<?xml", 0, Math.Min(content.Length, 4096));
-			if (content_start < 0) {
-				L.Log("m_GitHub::RequestResponse failed! " + address);
+			string content = sb.ToString();
+			sb = null;
+
+			// Find start of actual XML data
+			int content_start = content.IndexOf("<?xml", 0, Math.Min(content.Length, 512));
+			int content_end = content.LastIndexOf("</feed>", content.Length - 1, 128);
+			if (content_start < 0 || content_end < 0) {
+				L.Log("m_GitHub::RequestResponse failed! " + address
+					+ ", content length: " + content.Length);
 				return null;
 			}
-			int content_end = content.LastIndexOf('>', content.Length - 1);
-			return content.Substring(content_start, content_end - content_start + 1);
-		}
-
-		bool ValidateRemoteCertificate(object sender,
-			X509Certificate cert,
-			X509Chain chain,
-			SslPolicyErrors err)
-		{
-			// If the certificate is a valid, signed certificate, return true.
-			if (err == SslPolicyErrors.None)
-				return true;
-
-			//Console.WriteLine("X509Certificate [{0}] Policy Error: '{1}'",
-			//	cert.Subject, result.ToString());
-			L.Log("m_GitHub::ValidateRemoteCertificate, '" + cert.Subject +
-				"'. Error type: " + err.ToString());
-			return true;
+			return content;
 		}
 	}
 }

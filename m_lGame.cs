@@ -51,11 +51,12 @@ namespace MAIN
 			E.OnUserRename += OnUserRename;
 		}
 
-		void OnUserSay(string nick, string hostmask, string channel, string message,
-			int length, int channel_id, ref string[] args)
+		void OnUserSay(string nick, ref Channel chan, string message,
+			int length, ref string[] args)
 		{
-			if (channel[0] != '#')
+			if (chan.name[0] != '#')
 				return;
+			string channel = chan.name;
 
 			switch (args[0]) {
 			#region L join
@@ -101,7 +102,7 @@ namespace MAIN
 						return;
 					}
 
-					OnUserLeave(nick, hostmask, channel);
+					OnUserLeave(nick, "", channel);
 				}
 				break;
 			#endregion
@@ -368,7 +369,7 @@ namespace MAIN
 			#endregion
 			#region L set cards
 			case "$lsetcards":
-				if (hostmask != G.settings["owner_hostmask"]) {
+				if (chan.nicks[nick] != G.settings["owner_hostmask"]) {
 					E.Say(channel, nick + ": who are you?");
 					return;
 				}

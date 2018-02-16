@@ -24,16 +24,13 @@ namespace MAIN
 		public delegate void OnUserRenameDel(string nick, string hostmask, string old_nick);
 
 		/// <param name="nick">Nickname of speaker</param>
-		/// <param name="hostmask">Hostmask of speaker</param>
-		/// <param name="channel">Affected channel name, can 'nickname' in PMs</param>
+		/// <param name="channel">Affected channel object. This is a temporary object in PMs.</param>
 		/// <param name="message">Entire chat message</param>
 		/// <param name="length">Length of 'args'</param>
-		/// <param name="channel_id">.net variable</param>
-		/// <param name="args">Message splitted by words, value is never empty.
-		///  The usable length is 'length' to not read garbage.</param>
-		/// <returns>Chat handled? true: Prevent running other callbacks</returns>
-		public delegate void OnUserSayDel(string nick, string hostmask, string channel, string message,
-				int length, int channel_id, ref string[] args);
+		/// <param name="args">Message splitted by words, value is never empty for
+		/// [index < 'length']. This array has a length of at least 10.</param>
+		public delegate void OnUserSayDel(string nick, ref Channel chan, string message,
+				int length, ref string[] args);
 
 		public static OnUserDel OnUserJoin;
 		public static OnUserDel OnUserLeave;

@@ -63,6 +63,8 @@ namespace MAIN
 					break;
 				}
 				E.send(str);
+
+				Thread.Sleep(200);
 			}
 		}
 
@@ -284,7 +286,7 @@ namespace MAIN
 
 			tell_module = new m_Tell(is_restart);
 			lgame_module = new m_lGame(is_restart);
-			//LUALOCK lua_module = new m_Lua();
+			lua_module = new m_Lua();
 			github_module = new m_GitHub();
 
 			parser = new Thread(LoopThread);
@@ -360,25 +362,24 @@ namespace MAIN
 			for (int i = length; i < args.Length; i++)
 				args[i] = "";
 			#endregion
+			Channel chan;
 			#region Get and update channel
-			int channel_id = 0;
 			if (!is_private) {
-				for (int i = 0; i < chans.Length; i++) {
-					if (chans[i] != null && chans[i].name == channel) {
-						channel_id = i;
+				int id;
+				for (id = 0; id < chans.Length; id++) {
+					if (chans[id] != null && chans[id].name == channel)
 						break;
-					}
 				}
 
-				if (channel_id < 0) {
+				if (id == chans.Length) {
 					L.Log("E::OnChatMessage, Channel not added yet: " + channel);
 					return;
 				}
-
-				chans[channel_id].nicks[nick] = hostmask;
+				chan = chans[id];
 			} else {
-				channel = nick;
+				chan = new Channel(nick);
 			}
+			chan.nicks[nick] = hostmask;
 			#endregion
 
 			L.Log(channel + "\t <" + nick + "> " + message);
@@ -427,7 +428,7 @@ namespace MAIN
 
 			#endregion
 
-			OnUserSay(nick, hostmask, channel, message, length, channel_id, ref args);
+			OnUserSay(nick, ref chan, message, length, ref args);
 
 			switch (args[0]) {
 			#region MISC
@@ -890,6 +891,9 @@ namespace MAIN
 
 		public static void send(string s)
 		{
+			if (string.IsNullOrEmpty(s))
+				return;
+
 			if (!cli.Connected) {
 				L.Log("E::send, can not send: disconnected", true);
 				return;

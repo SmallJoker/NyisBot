@@ -56,14 +56,14 @@ namespace MAIN
 			}
 		}
 
-		public void OnUserSay(string nick, string hostmask, string channel, string message,
-			int length, int channel_id, ref string[] args)
+		void OnUserSay(string nick, ref Channel chan, string message,
+			int length, ref string[] args)
 		{
 			if (args[0] != "$tell")
 				return;
 
 			if (length < 2) {
-				E.Say(channel, nick + ": Expected arguments: <nick> <text ..>");
+				E.Say(chan.name, nick + ": Expected arguments: <nick> <text ..>");
 				return;
 			}
 
@@ -124,7 +124,7 @@ namespace MAIN
 			}
 			string date = DateTime.UtcNow.ToString("s");
 			tell_text.Add(new string[] { args[1], nick, date, str });
-			E.Say(channel, nick + ": meh okay. I'll look out for that user.");
+			E.Say(chan.name, nick + ": meh okay. I'll look out for that user.");
 			TellSave(true, true);
 		}
 
@@ -188,6 +188,13 @@ namespace MAIN
 			}
 			int i = 0;
 			int version = rd.ReadByte();
+
+			if (version != 4) {
+				L.Log("m_Tell::TellLoad, unsupported version: " + version, true);
+				rd.Close();
+				stream.Close();
+				return;
+			}
 
 			int len;
 			byte[] buf;
