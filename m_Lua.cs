@@ -54,6 +54,9 @@ namespace MAIN
 
 		string LuaRun(string nick, ref Channel chan, string message)
 		{
+			if (!System.IO.File.Exists("plugins/security.lua"))
+				return "Error: File 'plugins/security.lua' does not exist";
+
 			bool is_private = chan.name[0] != '#';
 			// Initialize packet lock, packet and start time
 			lua_lock = false;
@@ -108,7 +111,7 @@ namespace MAIN
 			int lua_error = 1;
 			string lua_output = null;
 
-			lua_error = Lua.luaL_dofile(SE.L, "security.lua");
+			lua_error = Lua.luaL_dofile(SE.L, "plugins/security.lua");
 			if (lua_error == 0)
 				lua_error = Lua.luaL_dostring(SE.L, message);
 

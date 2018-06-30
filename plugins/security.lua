@@ -47,7 +47,7 @@ local function protect_function(name, empty_msg, check)
 		assert(type(arg) == "string", "Argument #1: String expected.")
 		assert(arg ~= "", empty_msg)
 		if check then
-			check(arg)
+			arg = check(arg) or arg
 		end
 		return old_func(arg)
 	end
@@ -59,23 +59,23 @@ local included_files = {}
 local function check_included(file)
 	assert(not table.find(included_files, file), "Blocked from re-including "..file..".")
 	table.insert(included_files, file)
+	return file
 end
 
 protect_function("dofile", "Invalid file name.", function(arg)
-	local file = debug.getinfo(3).source
-	if file:sub(1, 1) ~= "@" then
-		assert(not string.find(arg, "\\") and not string.find(arg, "/"),
-				"Blocked for security reasons.")
+	local path_given = string.find(arg, "\\") or string.find(arg, "/")
+	if debug.getinfo(3).source:sub(1, 1) ~= "@" then
+		assert(not path_given, "Blocked for security reasons.")
 	end
-	check_included(arg)
+	return check_included(path_given and arg or ("plugins/" .. arg))
 end)
 
 protect_function("loadfile", "Invalid file name.", function(arg)
+	local path_given = string.find(arg, "\\") or string.find(arg, "/")
 	if debug.getinfo(3).source:sub(1, 1) ~= "@" then
-		assert(not string.find(arg, "\\") and not string.find(arg, "/"),
-				"Blocked for security reasons.")
+		assert(not path_given, "Blocked for security reasons.")
 	end
-	check_included(arg)
+	return check_included(path_given and arg or ("plugins/" .. arg))
 end)
 
 protect_function("require", "Invalid file name.", function(arg)
@@ -83,7 +83,7 @@ protect_function("require", "Invalid file name.", function(arg)
 	check_included(arg)
 end)
 
-protect_function("loadstring", "Invalid file name.", function(arg)
+protect_function("loadstring", "Invalid input string.", function(arg)
 	assert(debug.getinfo(3).source:sub(1, 1) == "@", "Blocked for security reasons.")
 	check_included(arg)
 end)
