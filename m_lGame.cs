@@ -155,7 +155,8 @@ namespace MAIN
 					c.lg_nick = 0;
 					c.lg_stack.Clear();
 					E.Say(channel, "Game started! Player " + c.lg_players[0].nick +
-						" can play the first card using \"$ladd <'main card'> <card nr.> [<card nr.> [<card nr.>]]\" (Card nr. from your hand)");
+						" can play the first card using \"$ladd <'main card'> <card nr.> [<card nr.> [<card nr.>]]\"" +
+						" (Card nr. from your hand)");
 
 					CheckCards(channel);
 				}
@@ -219,7 +220,7 @@ namespace MAIN
 							break;
 						}
 						if (l_card != "Q")
-							cards += " " + CARD_TYPES[i];
+							cards += CARD_TYPES[i] + " ";
 					}
 
 					// $lg <fake> <c1> <c2>
@@ -248,7 +249,8 @@ namespace MAIN
 					for (int i = 2; i < length; i++) {
 						int index = E.getInt(args[i]) - 1;
 						if (index < 0 || index >= card_mirror.Length) {
-							E.Notice(nick, "Invalid card index \"" + args[i] + "\". Play one between 1 and " + card_mirror.Length + " from your hand.");
+							E.Notice(nick, "Invalid card index \"" + args[i] + "\". Play one between 1 and " +
+							         card_mirror.Length + " from your hand.");
 							return;
 						}
 						if (!card_a.Contains(index))
@@ -277,9 +279,9 @@ namespace MAIN
 					c.lg_card = main_card;
 
 					string next_nick = c.lg_players[next_player].nick;
-					E.Say(channel, "[LGame] Main card: [" + main_card +
-						"] Stack height: " + c.lg_stack.Count +
-						" Next player: " + next_nick);
+					E.Say(channel, "[LGame] Main card: [" + main_card + "]" +
+						", Stack height: " + c.lg_stack.Count +
+						", Next player: " + next_nick);
 					Thread.Sleep(300);
 					E.Notice(next_nick, FormatCards(c.lg_players[next_player].cards, true));
 
@@ -345,7 +347,7 @@ namespace MAIN
 					CheckCards(channel);
 					current_player = c.lg_nick; // Update current player index
 
-					card_msg += "( " + FormatCards(c.lg_stack_top) + ") ";
+					card_msg += "(" + FormatCards(c.lg_stack_top) + ") ";
 					if (getChannelId(channel) != null) { // Reference is not updated after deleting the channel
 
 						int last_player = WrapIndex(c, current_player - 1);
@@ -427,36 +429,39 @@ namespace MAIN
 				return;
 
 			LGameChannel c = lchans[chan_id];
+			if (!RemovePlayer(ref c, nick))
+				return; // Player was not part of the round
 
-			if (c.lg_players.Count <= 3 &&
-				c.lg_running) {
-
+			if (c.lg_players.Count < 3 && c.lg_running) {
 				lchans[chan_id] = null;
 				E.Say(channel, "Game ended.");
+			} else if (c.lg_running) {
+				E.Say(channel, nick + " left the game. Next player: " + c.lg_players[c.lg_nick].nick);
 			} else {
-				RemovePlayer(ref c, nick);
+				E.Say(channel, nick + " left the game.");
 			}
 		}
 
 		string FormatCards(List<string> cards, bool number = false)
 		{
 			System.Text.StringBuilder sb = new System.Text.StringBuilder();
-			int i = 0;
+			int i = 1;
 			foreach (string card in cards) {
+				if (i > 1)
+					sb.Append(' ');
 				if (number) {
-					sb.Append(++i);
+					sb.Append(i);
 					sb.Append((char)3);
 					if (card == "Q")
 						sb.Append("04");
 					else
 						sb.Append("12");
 				}
-				sb.Append('[');
-				sb.Append(card);
-				sb.Append(']');
+
+				sb.Append('[' + card + ']');
 				if (number)
 					sb.Append((char)15);
-				sb.Append(' ');
+				i++;
 			}
 			return sb.ToString();
 		}
@@ -479,12 +484,12 @@ namespace MAIN
 			return -1;
 		}
 
-		void RemovePlayer(ref LGameChannel c, string nick)
+		bool RemovePlayer(ref LGameChannel c, string nick)
 		{
 			int player_index = FindPlayer(c.name, nick);
 
 			if (player_index < 0)
-				return;
+				return false;
 
 			c.lg_players.RemoveAt(player_index);
 
@@ -494,17 +499,13 @@ namespace MAIN
 				else
 					c.lg_nick--;
 			}
-
-			if (c.lg_running)
-				E.Say(c.name, nick + " left the game. Next player: " + c.lg_players[c.lg_nick].nick);
-			else
-				E.Say(c.name, nick + " left the game.");
+			return true;
 		}
 
 		void CheckCards(string channel, string nick = null)
 		{
 			LGameChannel c = getChannelId(channel);
-			if (c == null)
+			if (c == null || !c.lg_running)
 				return;
 
 			List<string> player_remove = new List<string>();
@@ -524,21 +525,25 @@ namespace MAIN
 							cards.Add(card, 1);
 					}
 					// Discard pairs
+					List<string> discarded = new List<string>();
 					foreach (KeyValuePair<string, int> card in cards) {
 						if (card.Value >= 4) {
-							for (int x = 0; x < 4; x++)
+							for (int x = 0; x < card.Value; x++)
 								c.lg_players[i].cards.Remove(card.Key);
 
-							E.Say(channel, info.nick + " can discard four [" + card.Key + "] cards. Left cards: " +
-								c.lg_players[i].cards.Count);
-							Thread.Sleep(300);
+							discarded.Add(card.Key);
 						}
+					}
+					if (discarded.Count > 0) {
+						E.Say(channel, info.nick + " can discard four " + FormatCards(discarded) + " cards. Left cards: " +
+							c.lg_players[i].cards.Count);
+						Thread.Sleep(300);
 					}
 				}
 
 				if (amount == 0) {
 					if (nick == null || (nick != null && nick != info.nick)) {
-						E.Say(channel, info.nick + " has no cards left. Congratulations, you're a winner.");
+						E.Say(channel, info.nick + " has no cards left. Congratulations, you're a winner!");
 						player_remove.Add(info.nick);
 					}
 				} else if (amount <= 3) {
