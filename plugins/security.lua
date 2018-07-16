@@ -117,12 +117,7 @@ setfenv = nil
 
 debug.sethook = nil
 
-io.popen = nil
-io.open = nil
-io.read = nil
-io.write = nil
-io.input = nil
-io.output = nil
+io = nil
 
 debug = protect_table(debug)
 --} DISABLE EVIL FUNCTIONS
@@ -131,61 +126,40 @@ math.randomseed(os.clock() * 1000)
 
 dofile("misc_helpers.lua")
 dofile("complex.lua")
-dofile("internetz.lua")
+--dofile("internetz.lua")
 
 --{ FUNCTION LINK()
 local link_list = {
-	address		= "What's your address? http://www.overclockers.com.au/image2.php?pic=images/newspics/29jan16/11.jpg",
-	amaze		= "Amazing! https://i.imgur.com/O8tFZ.gif",
 	applause	= "*CLAP* *CLAP* *CLAP* http://i.imgur.com/YiUe1r6.gif",
-	awaynick	= "Do NOT use away nicknames! http://sackheads.org/~bnaylor/spew/away_msgs.html",
 	bugs		= "Bugs everywhere <.< http://d2ykiwzv4lwge4.cloudfront.net/wp-content/uploads/2014/08/31.jpg",
 	busy		= "Don't interrupt me! http://i2.kym-cdn.com/photos/images/original/000/390/314/f56.gif",
 	color		= "\x02\x1f\x1d\x037,5 COLOR MADNESS",
-	come		= "Ok. http://i.imgur.com/Jr1dMxV.gif",
-	crocs		= "http://i.imgur.com/jo2GWlj.jpg",
-	developers	= "The developers! http://www.youtube.com/watch?v=KMU0tzLwhbE",
 	dj			= "Every 15 minutes there are random giveaways to the people in"..
 					" #dontjoinitsatrap ! (You can join it by clicking on the channel name)",
 	dramatic	= "Dramatic situation! https://www.youtube.com/watch?v=y8Kyi0WNg40",
-	gemini		= "Yes, we all love him, thus invite him to your channel! :) http://i.imgur.com/g4KjEJf.png",
-	grammarnazi	= "Watch your grammar! http://memesvault.com/wp-content/uploads/No-Cat-Meme-26.jpg",
 	high5		= "High five! https://i.imgur.com/M0bWify.gif",
-	kock		= function() dofile("quotes.lua") getQuote(5) end,
-	money		= "I have money. https://i.imgur.com/yLc4poE.gif",
-	nope		= "NOPE! http://i.imgur.com/RMsnqCF.gif",
-	nvidia		= "One of Linus' sentences: https://www.youtube.com/watch?v=iYWzMvlj2RQ",
 	panda		= "Never say no to panda. https://www.youtube.com/watch?v=X21mJh6j9i4",
 	["quick-look"]	= "Let's take a quick look. http://i.imgur.com/JRcwAWP.gif",
 	["rizon-prizes"]= "Rizon offers many cool prizes you can win with some luck. Get the complete list with the command "..
 					c("/msg GOD XDCC list").." and try your luck!",
 	repost		= "REPOST ALERT! http://i.imgur.com/FHJc4aP.gif",
-	semicolons	= "http://36.media.tumblr.com/tumblr_m4y213pGlc1qa0uujo1_1280.jpg",
 	slash		= "How to use slash: http://users.kymp.net/feuer/etcomic/013.jpg",
 	stfu		= "http://i2.kym-cdn.com/photos/images/facebook/000/919/578/c2f.jpg",
 	["tl;dr"]	= "Too long; didn't read that. http://i.imgur.com/EtYq65v.gif",
-	trivia		= "Genious questions. http://i.imgur.com/3Me7a5R.png",
 	typing		= "See me writing da wordz! http://replygif.net/i/937.gif",
 	upvote		= "Thumbs up! http://i.imgur.com/SlUuuHP.gif",
 	wdtam		= "LGTM, C DIS 2: http://users.kymp.net/feuer/etcomic/050.jpg",
-	win8		= "Logical way to say how Windows 8 is: http://www.dead-fish.com/wp-content/uploads/2013/06/windows-8-shit-or-good.jpg",
-	win10		= "Simple showcase of Windows 10: http://esfriki.com/f/a6LXLbR_700b.jpg",
-	yes			= "Yes! YES! https://i.imgur.com/tdrBo.gif",
-	youtube		= "How-to-youtube: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-	["yes-sure"]= "Meh, yes sure, whatever. http://replygif.net/i/247.gif",
-	["("]		= ") https://xkcd.com/859/",
 
 	["help.api"]	= "Complete Lua plugin source: https://github.com/SmallJoker/NyisBot",
 	["help.ask"]	= "How to ask questions correctly: http://rurounijones.github.io/blog/2009/03/17/how-to-ask-for-help-on-irc/",
 	["help.irc"]	= "A short IRC command tutorial: http://pastebin.com/raw/MB50gxk6",
-	["help.lua"]	= "PIL reference: http://www.lua.org/pil/contents.html",
-	["help.luacmd"]	= "Tutorial and function reference for this IRC bot: http://pastebin.com/raw/Bj15D8zs",
+	["help.luacmd"]	= "Tutorial and function reference for this IRC bot: "
+				.. "https://github.com/SmallJoker/NyisBot/blob/master/plugins/PLUGIN_API.txt",
 	["help.memo"]	= "Use "..c("/msg MemoServ SEND <user> <text>").." to send your message to <user>.",
 	["help.nick"]	= "Take a moment to read this tutorial: http://pastebin.com/raw/iHMFEq41",
 	["help.treeserv"]	= "List of commands: http://apeiron.no-ip.org:6112/treeserv.php?what=commands",
 
-	["bot.leave"]	= "Kick this bot from your channel if you think it's not required anymore.",
-	["bot.invite"]	= "To invite this bot into your channel, use the chat command "..c("/invite Nyisorn #channel")
+	["bot.invite"]	= "To invite this bot into your channel, use the chat command "..c("/invite " .. L.botname .. " #channel")
 }
 
 local link_list_keys = {}
@@ -203,11 +177,8 @@ function link(text)
 
 	text = string.lower(text)
 	if text == "list" then
-		local text = ""
-		for i,v in ipairs(link_list_keys) do
-			text = text.." "..v
-		end
-		print(L.nick ..":".. text.." )")
+		local text = table.concat(link_list_keys, " ")
+		print(L.nick ..": ".. text)
 		return
 	end
 

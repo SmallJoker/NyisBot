@@ -46,6 +46,7 @@ namespace MAIN
 				return;
 			}
 			Channel c = chan;
+			lua_timer.Start();
 			lua_thread = new Thread(delegate() {
 				E.Say(c.name, LuaRun(nick, ref c, str));
 			});
@@ -105,8 +106,6 @@ namespace MAIN
 			#endregion
 
 			lua_timeout = E.HDDisON() ? LUA_TIMEOUT : (LUA_TIMEOUT + 5000);
-			lua_timer.Start();
-			// Can abort lua_thread but not Lua!
 
 			int lua_error = 1;
 			string lua_output = null;
