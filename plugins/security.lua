@@ -137,6 +137,7 @@ local link_list = {
 	dj			= "Every 15 minutes there are random giveaways to the people in"..
 					" #dontjoinitsatrap ! (You can join it by clicking on the channel name)",
 	dramatic	= "Dramatic situation! https://www.youtube.com/watch?v=y8Kyi0WNg40",
+	epicfail	= "Do not prepare $lcheck -> https://pastebin.com/raw/piBH75rp",
 	high5		= "High five! https://i.imgur.com/M0bWify.gif",
 	panda		= "Never say no to panda. https://www.youtube.com/watch?v=X21mJh6j9i4",
 	["quick-look"]	= "Let's take a quick look. http://i.imgur.com/JRcwAWP.gif",

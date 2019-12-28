@@ -545,10 +545,13 @@ namespace MAIN
 					if (nick == null || (nick != null && nick != info.nick)) {
 						E.Say(channel, info.nick + " has no cards left. Congratulations, you're a winner!");
 						player_remove.Add(info.nick);
+					} else {
+						E.Say(channel, info.nick + " played " + (char)3 + "07their last card" + (char)15 + "!");
 					}
 				} else if (amount <= 3) {
 					if (nick != null && nick == info.nick) {
-						E.Say(channel, info.nick + " has only " + amount + " cards left!");
+						E.Say(channel, info.nick + " has " + (char)3 + "07only "
+							+ amount + " cards" + (char)15 + " left!");
 					}
 				}
 			}

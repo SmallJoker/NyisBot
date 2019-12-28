@@ -28,6 +28,11 @@ namespace MAIN
 			E.OnUserRename += FindTellUser;
 		}
 
+		~m_Tell()
+		{
+			SaveIfRequired();
+		}
+
 		public void SaveIfRequired()
 		{
 			if (tell_save_required)
