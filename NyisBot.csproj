@@ -50,6 +50,8 @@
     <Compile Include="ScriptEngine.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Actions.cs" />
+    <Compile Include="m_TimeBomb.cs" />
+    <Compile Include="Startup.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
