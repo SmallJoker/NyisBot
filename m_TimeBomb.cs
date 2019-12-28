@@ -31,8 +31,6 @@ namespace MAIN
 				nick = _nick;
 				color = _color;
 				timer = new SucklessTimer(interval);
-				timer.Enabled = true;
-				timer.Start();
 			}
 		}
 		Dictionary<string, DisarmData> m_timers;
@@ -48,15 +46,25 @@ namespace MAIN
 
 		void BoomTimerElapsed(string channel)
 		{
+			if (m_cooldown.ContainsKey(channel)) {
+				L.Log("WARNING: Wanted to BOOM but the timer should already be deleted.");
+				m_timers.Remove(channel);
+				return;
+			}
+			// Maybe don't explode at all
+			if (E.rand.Next(0, 100) >= 90) {
+				m_timers.Remove(channel);
+				return;
+			}
+
 			var data = m_timers[channel];
+			data.timer.Stop();
 			E.Say(channel, "BOOOM! " + data.nick + " died instantly.");
 
-			var cooldown = new SucklessTimer(E.rand.Next(30, 70) * 1000.0);
+			var cooldown = new SucklessTimer(E.rand.Next(60, 90) * 1000.0);
 			cooldown.Elapsed += delegate {
 				m_cooldown.Remove(channel);
 			};
-			cooldown.Enabled = true;
-			cooldown.Start();
 			m_cooldown[channel] = cooldown;
 			m_timers.Remove(channel);
 		}
@@ -106,6 +114,9 @@ namespace MAIN
 					      + "s until explosion. Try $cutwire <color> from one of these colors: " + choice_str);
 				}
 				break;
+			case "$cutewire":
+					E.Say(chan.name, nick +": Are you stupid or what? Try better next time.");
+				break;
 			case "$cutwire": {
 					if (!m_timers.ContainsKey(chan.name)) {
 						E.Say(chan.name, "There's no timebomb to disarm.");
@@ -141,14 +152,16 @@ namespace MAIN
 	class SucklessTimer : System.Timers.Timer
 	{
 		private DateTime m_due;
-		public SucklessTimer(double interval) : base(interval)
+		public SucklessTimer(double interval) : base()
 		{
+			base.Interval = interval;
 			m_due = DateTime.Now.AddMilliseconds(interval);
+			base.Start();
 		}
 
 		public double GetRemaining()
 		{
-			return (m_due - DateTime.Now).Milliseconds;
+			return (m_due - DateTime.Now).TotalMilliseconds;
 		}
 	}
 }

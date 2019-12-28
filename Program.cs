@@ -1,4 +1,5 @@
-﻿//#define USE_ACC_FOR_NICKSERV
+﻿#define LINUX
+//#define USE_ACC_FOR_NICKSERV
 
 using System;
 using System.Net.Sockets;
