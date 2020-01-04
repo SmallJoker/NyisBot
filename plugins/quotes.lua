@@ -69,11 +69,14 @@ function getQuote(text)
 	local results = {}
 	if type(text) == "number" then
 		results[1] = getRow("SELECT * FROM quotes WHERE id = ".. text .." LIMIT 1")
-	else
+	elseif type(text) == "string" then
 		for v in db:rows("SELECT * FROM quotes WHERE content LIKE '%".. text .."%'") do
 			table.insert(results, v)
 		end
+	else
+		results[1] = getRow("SELECT * FROM quotes ORDER BY RANDOM() LIMIT 1")
 	end
+
 	if block_getquote then
 		error("Flood detected.")
 	end
@@ -81,7 +84,9 @@ function getQuote(text)
 
 	if #results == 1 then
 		local quote = results[1][3]:gsub("&#39;", "'")
-		print(c("[#".. results[1][1] .."] ").. quote)
+		-- Take first part from username@ip.address (if there is any)
+		local author = results[1][2]:split("@")
+		print(c("[#" .. results[1][1] .. " by " .. author[1] .. "] ") .. quote)
 	elseif #results == 0 then
 		throwError(404, "No matching quote found.")
 	else

@@ -225,8 +225,9 @@ List of additional modules:
 	addQuote("<text>")
 		^* Adds a quote to the database (requires authentification)
 
-	getQuote(identifier)
+	getQuote([identifier])
 		^* Gets a quote by index (number) or by keyword (string)
+		^ identifier: Optional, a random entry will be shown
 
 	removeQuote(index)
 		^* Removes one of your quotes

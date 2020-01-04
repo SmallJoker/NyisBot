@@ -65,19 +65,19 @@ function dump(t, layer)
 		return "nil value"
 	end
 
-	local report = ""
+	local txt = {}
 	if type(t) == "table" then
-		report = report .."{"
+		txt[#txt + 1] = "{"
 		for k, v in pairs(t) do
-			report = report .. " [".. tostring(k) .."] = ".. dump(v, layer + 1)
+			txt[#txt + 1] = (" [%s] = %s"):format(tostring(k), dump(v, layer + 1))
 		end
-		report = report .." } "
+		txt[#txt + 1] = "} "
 	elseif type(t) == "string" then
-		report = report ..'"'.. t:gsub('\n', "$LF"):gsub('"', '\\"') ..'" '
+		txt[#txt + 1] = '"' .. t:gsub('\n', "$LF"):gsub('"', '\\"') .. '" '
 	else
-		report = report .. tostring(t) .." "
+		txt[#txt + 1] = tostring(t) .. " "
 	end
-	return report
+	return table.concat(txt)
 end
 
 --------------------------------------------------------------------------------

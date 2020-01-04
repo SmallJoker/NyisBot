@@ -125,6 +125,10 @@ debug = protect_table(debug)
 math.randomseed(os.clock() * 1000)
 
 dofile("misc_helpers.lua")
+string = protect_table(string)
+math   = protect_table(math)
+table  = protect_table(table)
+
 dofile("complex.lua")
 --dofile("internetz.lua")
 
