@@ -1,4 +1,4 @@
-# Python Noob Generator by rubenwardy
+-- Python Noob Generator by rubenwardy
 -- License: WTFPL
 -- See IRC bot using this: https://gist.github.com/rubenwardy/8863c20a75e4faad3562
 
@@ -100,31 +100,31 @@ local function getnoun()
 	return noun
 end
 
-function gensentence()
+local function gensentence()
 	local noun1 = getnoun()
 	local noun2 = getnoun()
 	local verb = getrand(verbs)
 	return noun1 .. " " .. verb .. " " .. noun2
 end
 
-function generate(length)
+function noobgen.generate(length)
 	if not length or type(length) ~= "number" then
 		length = 3
 	end
-	
+
 	if length > 6 then
 		length = 6
 	end
-	
+
 	local result = gensentence()
 	for i = 1, length do
 		result = result .. " " .. getrand(cons)
 				.. " " .. gensentence()
 	end
-	
+
 	print(result)
 end
 
-function credits()
+function noobgen.credits()
 	print("Original source: https://gist.github.com/rubenwardy/4cb29fedb7952e5a4cdf")
 end

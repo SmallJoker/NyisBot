@@ -29,7 +29,7 @@ local function getRow(query)
 	return nil
 end
 
-function addQuote(text)
+function quotes.add(text)
 	if not text or string.len(text) < 10 then
 		print(L.nick ..": Too short message")
 		return
@@ -65,7 +65,7 @@ function addQuote(text)
 	print(L.nick ..": Added quote #".. row[1])
 end
 
-function getQuote(text)
+function quotes.get(text)
 	local results = {}
 	if type(text) == "number" then
 		results[1] = getRow("SELECT * FROM quotes WHERE id = ".. text .." LIMIT 1")
@@ -98,7 +98,7 @@ function getQuote(text)
 	end
 end
 
-function removeQuote(id)
+function quotes.remove(id)
 	if not id or type(id) ~= "number" then
 		error("Argument #1: Number expected.")
 	end
@@ -121,7 +121,7 @@ function removeQuote(id)
 	end
 end
 
-function fuckyouiamadmin(text, dump_it)
+function quotes.fuckyouiamadmin(text, dump_it)
 	--DELETE * FROM quotes
 	if not isAdmin() then
 		throwError(403, "No, you're not an admin!")

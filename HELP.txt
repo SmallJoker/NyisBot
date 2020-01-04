@@ -64,11 +64,8 @@ Sometimes it's good to know if there are other things that can be used. For this
  check out the available Lua modules/scripts that can be included to the bot.
 > $ help()
 
-Now check out all functions inside that module.
-> $ help("noobgen.lua")
-
 Call the special Lua function "dofile" to include a file to your command to call a function inside the loaded module.
-> $ dofile("noobgen.lua") generate(2)
+> $ noobgen.generate(2)
 
 
  Function list
@@ -78,10 +75,8 @@ All asterisk (*) marked functions do not require a "$ return .." to output the t
 
 List of additional modules:
 	- <morse.lua> Convert text to morse code and back again
-	- <music.lua> Get a number 1 hit
 	- <noobgen.lua> Generate noobish text
 	- <quotes.lua> Add and read quotes
-	- <roman.lua> Convert decimal numbers to the roman system back back
 
 
 # Default functions: (automatically loaded)
@@ -169,79 +164,51 @@ List of additional modules:
 		:topolar()
 
 
-# Internet related functions: (automatically loaded)
-	ddg("<keywords>"), duckduckgo("<keywords>")
-		^* Uses DuckDuckGo Instant to search for something
-
-	downloadPrint("<url>")
-		^* Downloads and outputs the website contents
-
-	loadScript("<url>")
-		^ Downloads a script from the internet and executes it
-
-
 # Functions in karma.lua:
-	credits()
+	karma.credits()
 		^* Outputs the credits of the current module
 
-	addKarma("<nickname>")
+	karma.up("<nickname>")
 		^* Adds 1 karma point to the specified person (requires authentification)
 		^ nickname: A person that is present in the current channel (case insensitive)
 
-	getKarma("<nickname>")
+	karma.get("<nickname>")
 		^* Gets the karma of the specified person (case insensitive)
 
 
 # Functions in morse.lua:
-	credits()
+	morse.credits()
 		^* Outputs the credits of the current module
 
-	morse2text("<morse text>")
-		^* Converts morse text into readable text
+	morse.toText("<morse code>")
+		^* Converts morse code into readable text
 
-	text2morse("<text>")
+	morse.fromText("<text>")
 		^* Converts readable text into morse code
 
 
-# Functions in music.lua:
-	getHit([year number])
-		^* Gets a random number 1 hit from the years 1960-88
-		^ year number: Optional, can be in the following formats: 71 or 1971
-
-
 # Functions in noobgen.lua:
-	credits()
+	noobgen.credits()
 		^* Outputs the credits of the current module
 
-	generate([amount sentences])
+	noobgen.generate([amount sentences])
 		^* Generates noobish sentences, default: 3
 		^ amount sentences: Optional, numeric value from 1 to 6
 
 
 # Functions in quotes.lua:
-	credits()
+	quotes.credits()
 		^* Outputs the credits of the current module
 
-	addQuote("<text>")
+	quotes.add("<text>")
 		^* Adds a quote to the database (requires authentification)
 
-	getQuote([identifier])
+	quotes.get([identifier])
 		^* Gets a quote by index (number) or by keyword (string)
 		^ identifier: Optional, a random entry will be shown
 
-	removeQuote(index)
+	quotes.remove(index)
 		^* Removes one of your quotes
-
-
-# Functions in roman.lua:
-	credits()
-		^* Outputs the credits of the current module
-
-	arabic2roman(number)
-		^* Converts a regular number into a roman number
-
-	roman2arabic("<roman number>")
-		^* Converts a roman number into a regular number
 
 
  Other commands

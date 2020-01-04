@@ -1,15 +1,15 @@
 ﻿-- security.lua
 -- This file is included before any chat command is executed.
 
+local _rawget = rawget
 local start_time = os.clock()
-local sethook = debug.sethook
 
 local function timeouts(event, line)
 	if os.clock() - start_time > 5 then
 		error("THREAD STOPPED ")
 	end
 end
-sethook(timeouts, "l", 1E6)
+debug.sethook(timeouts, "l", 1E6)
 
 function table.find(tab, val)
 	for k, v in pairs(tab) do
@@ -23,12 +23,12 @@ end
 --{ READONLY TABLES
 local function protect_table(t)
 	return setmetatable({}, {
-			__index = t,
-			__newindex = function(t, key, value)
-				error("Table is readonly")
-			end,
-			__metatable = false
-		})
+		__index = t,
+		__newindex = function(t, key, value)
+			error("Table is readonly")
+		end,
+		__metatable = false
+	})
 end
 
 for k = 1, L.online do
@@ -131,6 +131,26 @@ table  = protect_table(table)
 
 dofile("complex.lua")
 --dofile("internetz.lua")
+
+-- On-demand API functions
+local api_loaded = {}
+local function register_api(tablename, filename)
+	_G[tablename] = setmetatable({}, {
+		__index = function(self, key)
+			if not api_loaded[tablename] then
+				dofile(filename)
+				api_loaded[tablename] = true
+			end
+			return _rawget(self, key)
+		end,
+		__metatable = false
+	})
+end
+
+register_api("quotes",  "quotes.lua")
+register_api("noobgen", "noobgen.lua")
+register_api("karma",   "karma.lua")
+
 
 --{ FUNCTION LINK()
 local link_list = {

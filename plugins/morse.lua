@@ -32,9 +32,9 @@ for k,v in pairs(morsealphabet) do
 	reversemorsealphabet[v] = k
 end
 
-function text2morse(x)
+function morse.fromText(x)
 	x = string.lower(x)
-	
+
 	local morsed = ""
 	for c in x:gmatch(".") do
 		if morsealphabet[c] then
@@ -44,9 +44,9 @@ function text2morse(x)
 	print(morsed)
 end
 
-function morse2text(x)
+function morse.toText(x)
 	local text = x:split(' ')
-	
+
 	local demorsed = "";
 	for i = 1, #text do
 		local cache = reversemorsealphabet[text[i]]
@@ -57,6 +57,6 @@ function morse2text(x)
 	print(demorsed)
 end
 
-function credits()
+function morse.credits()
 	print("Original source: https://github.com/trfunk/lua/blob/master/dailyprogrammer%20%28reddit%29/%5B7%5Dmorsecode.lua")
 end
