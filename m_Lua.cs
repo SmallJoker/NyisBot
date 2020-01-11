@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace MAIN
 {
-	class m_Lua
+	class m_Lua : Module
 	{
 		const int LUA_TIMEOUT = 4000;
 		const int LUA_TEXT_MAX = 453;
@@ -12,21 +12,19 @@ namespace MAIN
 		ScriptEngine SE = new ScriptEngine();
 		System.Text.StringBuilder lua_packet = null;
 		System.Diagnostics.Stopwatch lua_timer;
-		int lua_timeout;
 		bool lua_lock;
 
 		Thread lua_thread;
 		public Dictionary<string, int> userstatus_queue;
 
-		public m_Lua()
+		public m_Lua(Manager manager) : base("Lua", manager)
 		{
 			lua_timer = new System.Diagnostics.Stopwatch();
 			userstatus_queue = new Dictionary<string, int>();
-			E.OnUserSay += OnUserSay;
 		}
 
-		void OnUserSay(string nick, ref Channel chan, string message,
-			int length, ref string[] args)
+		public override void OnUserSay(string nick, string message,
+				int length, ref string[] args)
 		{
 			if (args[0] != "$" && args[0] != "$lua")
 				return;
@@ -45,20 +43,20 @@ namespace MAIN
 				E.Notice(nick, "Too short input text.");
 				return;
 			}
-			Channel c = chan;
+			Channel channel = p_manager.GetChannel();
 			lua_timer.Start();
-			lua_thread = new Thread(delegate() {
-				E.Say(c.name, LuaRun(nick, ref c, str));
+			lua_thread = new Thread(delegate () {
+				channel.Say(LuaRun(nick, channel, str));
 			});
 			lua_thread.Start();
 		}
 
-		string LuaRun(string nick, ref Channel chan, string message)
+		string LuaRun(string nick, Channel chan, string message)
 		{
 			if (!System.IO.File.Exists("plugins/security.lua"))
 				return "Error: File 'plugins/security.lua' does not exist";
 
-			bool is_private = chan.name[0] != '#';
+			bool is_private = chan.IsPrivate();
 			// Initialize packet lock, packet and start time
 			lua_lock = false;
 			lua_packet = new System.Text.StringBuilder();
@@ -95,7 +93,7 @@ namespace MAIN
 			#region Public chat variables variables
 			SE.CreateLuaTable("L");
 			Lua.lua_getglobal(SE.L, "L");
-			SE.SetTableField("channel", chan.name);
+			SE.SetTableField("channel", chan.GetName());
 			SE.SetTableField("nick", nick);
 			SE.SetTableField("botname", G.settings["nickname"]);
 			SE.SetTableField("hostmask", chan.nicks[nick]);
@@ -104,8 +102,6 @@ namespace MAIN
 			SE.SetTableField("owner_hostmask", G.settings["owner_hostmask"]);
 			Lua.lua_settop(SE.L, 0);
 			#endregion
-
-			lua_timeout = E.HDDisON() ? LUA_TIMEOUT : (LUA_TIMEOUT + 5000);
 
 			int lua_error = 1;
 			string lua_output = null;
@@ -176,7 +172,7 @@ namespace MAIN
 
 		bool isTimeout(IntPtr ptr)
 		{
-			if (lua_timer.ElapsedMilliseconds > lua_timeout) {
+			if (lua_timer.ElapsedMilliseconds > LUA_TIMEOUT) {
 				L.Log("m_Lua::isTimeout, code ran too long");
 				Lua.luaL_error(ptr, "STOP");
 				return true;
@@ -230,25 +226,15 @@ namespace MAIN
 			if (!SE.CheckString(ptr, "getUserstatus", 1))
 				return 0;
 
-			string nick = Lua.lua_tostring(ptr, 1).ToLower();
+			string to_find = Lua.lua_tostring(ptr, 1).ToLower();
+			string nick = null;
 
-			bool found = false;
-			for (int i = 0; i < E.chans.Length; i++) {
-				Channel cur = E.chans[i];
-				if (cur == null)
-					continue;
-
-				foreach (KeyValuePair<string, string> k in cur.nicks) {
-					if (k.Key.ToLower() == nick) {
-						nick = k.Key;
-						found = true;
-						break;
-					}
-				}
-				if (found)
+			foreach (Channel chan in p_manager.UnsafeGetChannels()) {
+				nick = chan.FindNickname(to_find, false);
+				if (nick != null)
 					break;
 			}
-			if (!found)
+			if (nick == null)
 				return 0;
 
 			if (userstatus_queue.ContainsKey(nick)) {

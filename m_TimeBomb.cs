@@ -4,7 +4,21 @@ using System.Threading;
 
 namespace MAIN
 {
-	class m_TimeBomb
+	class DisarmData
+	{
+		public string nick;
+		public string color;
+		public SucklessTimer timer;
+
+		public DisarmData(string _nick, string _color, double interval)
+		{
+			nick = _nick;
+			color = _color;
+			timer = new SucklessTimer(interval);
+		}
+	}
+
+	class m_TimeBomb : Module
 	{
 		static string[] colors = {
 			"black",
@@ -20,28 +34,19 @@ namespace MAIN
 			"yellow"
 		};
 
-		class DisarmData
-		{
-			public string nick;
-			public string color;
-			public SucklessTimer timer;
-
-			public DisarmData(string _nick, string _color, double interval)
-			{
-				nick = _nick;
-				color = _color;
-				timer = new SucklessTimer(interval);
-			}
-		}
 		Dictionary<string, DisarmData> m_timers;
 		Dictionary<string, SucklessTimer> m_cooldown;
 
-		public m_TimeBomb()
+		public m_TimeBomb(Manager manager) : base("TimeBomb", manager)
 		{
 			m_timers = new Dictionary<string, DisarmData>();
 			m_cooldown = new Dictionary<string, SucklessTimer>();
+		}
 
-			Actions.OnUserSay += OnUserSay;
+		public override void CleanStage()
+		{
+			m_timers.Clear();
+			m_cooldown.Clear();
 		}
 
 		void BoomTimerElapsed(string channel)
@@ -69,26 +74,30 @@ namespace MAIN
 			m_timers.Remove(channel);
 		}
 
-		void OnUserSay(string nick, ref Channel chan, string message,
+		public override void OnUserSay(string nick, string message,
 				int length, ref string[] args)
 		{
-			if (chan.name[0] != '#')
+			Channel chan = p_manager.GetChannel();
+			if (chan.IsPrivate())
 				return;
+
+			string channel = chan.GetName();
 
 			switch (args[0]) {
 			case "$timebomb": {
-					string channel = chan.name;
 					if (m_timers.ContainsKey(channel)) {
-						E.Say(channel, "Only one timebomb is allowed at a time.");
+						chan.Say("Only one timebomb is allowed at a time.");
 						return;
 					}
 					if (m_cooldown.ContainsKey(channel)) {
-						E.Say(channel, "Field is too hot. Need to cooldown first. ("
-						      + (int)(m_cooldown[channel].GetRemaining() / 1000.0) + "s)");
+						chan.Say("Field is too hot. Need to cooldown first. (" +
+							(int)(m_cooldown[channel].GetRemaining() / 1000.0) + "s)");
 						return;
 					}
-					if (!chan.contains(args[1])) {
-						E.Say(channel, nick + ": Unknown nickname '" + args[1] + "'");
+
+					string dst_name = chan.FindNickname(args[1]);
+					if (dst_name == null) {
+						chan.Say(nick + ": Unknown nickname '" + args[1] + "'");
 						return;
 					}
 
@@ -103,48 +112,48 @@ namespace MAIN
 							choice_str += ", ";
 					}
 					string color = choices[E.rand.Next(choices.Length)];
-	
-					var data = new DisarmData(args[1], color, E.rand.Next(30, 70) * 1000.0);
+
+					var data = new DisarmData(dst_name, color, E.rand.Next(30, 70) * 1000.0);
 					data.timer.Elapsed += delegate {
 						BoomTimerElapsed(channel);
 					};
-	
+
 					m_timers[channel] = data;
-					E.Say(channel, args[1] + ": Tick tick.. " + (int)(data.timer.Interval / 1000.0)
-					      + "s until explosion. Try $cutwire <color> from one of these colors: " + choice_str);
+					chan.Say(dst_name + ": Tick tick.. " + (int)(data.timer.Interval / 1000.0) +
+						"s until explosion. Try $cutwire <color> from one of these colors: " + choice_str);
 				}
-				break;
+				return;
 			case "$cutewire":
-					E.Say(chan.name, nick +": Are you stupid or what? Try better next time.");
-				break;
+					chan.Say(nick + ": Are you stupid or what? Try better next time.");
+				return;
 			case "$cutwire": {
-					if (!m_timers.ContainsKey(chan.name)) {
-						E.Say(chan.name, "There's no timebomb to disarm.");
+					if (!m_timers.ContainsKey(channel)) {
+						chan.Say("There's no timebomb to disarm.");
 						return;
 					}
-					var data = m_timers[chan.name];
+					var data = m_timers[channel];
 					if (data.nick != nick) {
-						E.Say(chan.name, nick + ": You may not help to disarm the bomb.");
+						chan.Say(nick + ": You may not help to disarm the bomb.");
 						return;
 					}
 					args[1] = args[1].ToLower();
 					int color_i = Array.IndexOf(colors, args[1]);
 
 					if (color_i < 0) {
-						E.Say(chan.name, nick + ": Unknown or missing wire color.");
+						chan.Say(nick + ": Unknown or missing wire color.");
 						return;
 					}
 
 					if (data.color != colors[color_i]) {
 						// Explode instantly
-						BoomTimerElapsed(chan.name);
+						BoomTimerElapsed(channel);
 						return;
 					}
 					// Disarmed
-					m_timers.Remove(chan.name);
-					E.Say(chan.name, nick + ": You successfully disarmed the bomb.");
+					m_timers.Remove(channel);
+					chan.Say(nick + ": You successfully disarmed the bomb.");
 				}
-				break;
+				return;
 			}
 		}
 	}

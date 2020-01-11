@@ -38,25 +38,29 @@ namespace MAIN
 		}
 	}
 
-	class m_lGame
+	class m_lGame : Module
 	{
 		string[] CARD_TYPES = { "6", "7", "8", "9", "10", "J", "Q", "K", "A" };
-		LGameChannel[] lchans;
+		List<LGameChannel> lchans;
 
-		public m_lGame(bool is_restart)
+		public m_lGame(Manager manager) : base("lGame", manager)
 		{
-			lchans = new LGameChannel[E.chans.Length];
-			E.OnUserSay += OnUserSay;
-			E.OnUserLeave += OnUserLeave;
-			E.OnUserRename += OnUserRename;
+			lchans = new List<LGameChannel>();
 		}
 
-		void OnUserSay(string nick, ref Channel chan, string message,
-			int length, ref string[] args)
+		public override void CleanStage()
 		{
-			if (chan.name[0] != '#')
+			lchans.Clear();
+		}
+
+		public override void OnUserSay(string nick, string message,
+				int length, ref string[] args)
+		{
+			Channel chan = p_manager.GetChannel();
+			if (chan.IsPrivate())
 				return;
-			string channel = chan.name;
+
+			string channel = chan.GetName();
 
 			switch (args[0]) {
 			#region L join
@@ -67,15 +71,10 @@ namespace MAIN
 						return;
 					}
 
-					LGameChannel c = getChannelId(channel);
+					LGameChannel c = GetLChannel(channel);
 					if (c == null) {
-						for (int i = 0; i < lchans.Length; i++) {
-							if (lchans[i] == null) {
-								lchans[i] = new LGameChannel(channel);
-								c = lchans[i];
-								break;
-							}
-						}
+						c = new LGameChannel(channel);
+						lchans.Add(c);
 					}
 
 					if (c.lg_running) {
@@ -90,7 +89,7 @@ namespace MAIN
 						text += " If you want to start the game, use \"$lstart\"";
 					else if (count == 1)
 						text += " At least 3 players are required to start the game.";
-					E.Say(channel, text);
+					chan.Say(text);
 				}
 				break;
 			#endregion
@@ -102,7 +101,7 @@ namespace MAIN
 						return;
 					}
 
-					OnUserLeave(nick, "", channel);
+					OnUserLeave(nick);
 				}
 				break;
 			#endregion
@@ -113,7 +112,7 @@ namespace MAIN
 						E.Notice(nick, "You are not part of the game.");
 						return;
 					}
-					LGameChannel c = getChannelId(channel);
+					LGameChannel c = GetLChannel(channel);
 
 					if (c.lg_running) {
 						E.Notice(nick, "The game is already running.");
@@ -122,7 +121,7 @@ namespace MAIN
 
 					int total_players = c.lg_players.Count;
 					if (total_players < 3) {
-						E.Say(channel, nick + ": At least 3 players are required to start the game.");
+						chan.Say(nick + ": At least 3 players are required to start the game.");
 						return;
 					}
 
@@ -154,11 +153,11 @@ namespace MAIN
 					c.lg_card = "";
 					c.lg_nick = 0;
 					c.lg_stack.Clear();
-					E.Say(channel, "Game started! Player " + c.lg_players[0].nick +
+					chan.Say("Game started! Player " + c.lg_players[0].nick +
 						" can play the first card using \"$ladd <'main card'> <card nr.> [<card nr.> [<card nr.>]]\"" +
 						" (Card nr. from your hand)");
 
-					CheckCards(channel);
+					CheckCards();
 				}
 				break;
 			#endregion
@@ -169,7 +168,7 @@ namespace MAIN
 						E.Notice(nick, "You are not part of the game.");
 						return;
 					}
-					LGameChannel c = getChannelId(channel);
+					LGameChannel c = GetLChannel(channel);
 
 					E.Shuffle(ref c.lg_players[player_i].cards);
 					E.Notice(nick, FormatCards(c.lg_players[player_i].cards, true));
@@ -184,7 +183,7 @@ namespace MAIN
 						return;
 					}
 
-					LGameChannel c = getChannelId(channel);
+					LGameChannel c = GetLChannel(channel);
 
 					if (!c.lg_running) {
 						E.Notice(nick, "The game is not running yet. Use \"$lstart\"");
@@ -199,7 +198,7 @@ namespace MAIN
 					}
 
 					if (length < 3) {
-						E.Say(channel, nick + ": Expected arguments <'main card'> <index> [<index> ..]" +
+						chan.Say(nick + ": Expected arguments <'main card'> <index> [<index> ..]" +
 							"(Blue number: card value, Black number: index)");
 						return;
 					}
@@ -225,17 +224,17 @@ namespace MAIN
 
 					// $lg <fake> <c1> <c2>
 					if (main_card != "" && main_card != card) {
-						E.Say(channel, nick + ": Wrong card type! Please pretend to place a card of type [" + main_card + "]!");
+						chan.Say(nick + ": Wrong card type! Please pretend to place a card of type [" + main_card + "]!");
 						return;
 					}
 
 					if (card_upper == "Q") {
-						E.Say(channel, nick + ": The Queen is the bad card and can not be used as the main card of a stack.");
+						chan.Say(nick + ": The Queen is the bad card and can not be used as the main card of a stack.");
 						return;
 					}
 
 					if (!valid_main_card) {
-						E.Say(channel, nick + ": There is no such card type. Valid are: " + cards);
+						chan.Say(nick + ": There is no such card type. Valid are: " + cards);
 						return;
 					}
 
@@ -250,7 +249,7 @@ namespace MAIN
 						int index = E.getInt(args[i]) - 1;
 						if (index < 0 || index >= card_mirror.Length) {
 							E.Notice(nick, "Invalid card index \"" + args[i] + "\". Play one between 1 and " +
-							         card_mirror.Length + " from your hand.");
+								card_mirror.Length + " from your hand.");
 							return;
 						}
 						if (!card_a.Contains(index))
@@ -279,13 +278,13 @@ namespace MAIN
 					c.lg_card = main_card;
 
 					string next_nick = c.lg_players[next_player].nick;
-					E.Say(channel, "[LGame] Main card: [" + main_card + "]" +
+					chan.Say("[LGame] Main card: [" + main_card + "]" +
 						", Stack height: " + c.lg_stack.Count +
 						", Next player: " + next_nick);
 					Thread.Sleep(300);
 					E.Notice(next_nick, FormatCards(c.lg_players[next_player].cards, true));
 
-					CheckCards(channel, nick);
+					CheckCards(nick);
 				}
 				break;
 			#endregion
@@ -297,7 +296,7 @@ namespace MAIN
 						return;
 					}
 
-					LGameChannel c = getChannelId(channel);
+					LGameChannel c = GetLChannel(channel);
 
 					if (!c.lg_running) {
 						E.Notice(nick, "The game is not running yet. Use \"$lstart\"");
@@ -344,11 +343,11 @@ namespace MAIN
 					// Clear stack
 					c.lg_card = "";
 					c.lg_stack.Clear();
-					CheckCards(channel);
+					CheckCards();
 					current_player = c.lg_nick; // Update current player index
 
 					card_msg += "(" + FormatCards(c.lg_stack_top) + ") ";
-					if (getChannelId(channel) != null) { // Reference is not updated after deleting the channel
+					if (GetLChannel(channel) != null) { // Reference is not updated after deleting the channel
 
 						int last_player = WrapIndex(c, current_player - 1);
 						string nick_current = c.lg_players[current_player].nick;
@@ -357,14 +356,14 @@ namespace MAIN
 						card_msg += "Complete stack goes to " + nick_last + ". " +
 							 nick_current + " can start with an empty stack.";
 
-						E.Say(channel, card_msg);
+						chan.Say(card_msg);
 						E.Notice(nick_last, FormatCards(
 								c.lg_players[last_player].cards,
 								true
 						));
 						E.Notice(nick_current, FormatCards(c.lg_players[current_player].cards, true));
 					} else {
-						E.Say(channel, card_msg);
+						chan.Say(card_msg);
 					}
 				}
 				break;
@@ -372,20 +371,17 @@ namespace MAIN
 			#region L set cards
 			case "$lsetcards":
 				if (chan.nicks[nick] != G.settings["owner_hostmask"]) {
-					E.Say(channel, nick + ": who are you?");
+					chan.Say(nick + ": who are you?");
 					return;
 				}
 				if (length < 4) {
-					E.Say(channel, nick + ": Too few cards! Add more :(");
+					chan.Say(nick + ": Too few cards! Add more :(");
 					return;
 				}
-				for (int i = 0; i < lchans.Length; i++) {
-					if (lchans[i] == null)
-						continue;
-
-					if (lchans[i].lg_running) {
-						E.Say(channel, nick + ": Can not change, there's a running game in the channel " +
-							E.chans[i].name + "!");
+				foreach (LGameChannel lchan in lchans) {
+					if (lchan.lg_running) {
+						chan.Say(nick + ": Cannot change; wait for channel " +
+							lchan.name + " to complete the game.");
 						return;
 					}
 				}
@@ -393,52 +389,37 @@ namespace MAIN
 				for (int i = 1; i < length; i++) {
 					CARD_TYPES[i - 1] = args[i];
 				}
-				E.Say(channel, nick + ": OK. Done :)");
+				chan.Say(nick + ": OK. Done :)");
 				break;
 			#endregion
 			}
 		}
 
-		void OnUserRename(string nick, string hostmask, string old_nick)
+		public override void OnUserRename(string nick, string old_nick)
 		{
-			for (int i = 0; i < lchans.Length; i++) {
-				if (lchans[i] == null)
-					continue;
-
-				for (int k = 0; k < lchans[i].lg_players.Count; k++) {
-					if (lchans[i].lg_players[k].nick == old_nick) {
-						lchans[i].lg_players[k].nick = nick;
-						return;
-					}
+			foreach (LGameChannel chan in lchans) {
+				foreach (LGPlayer player in chan.lg_players) {
+					if (player.nick == old_nick)
+						player.nick = nick;
 				}
 			}
 		}
 
-		void OnUserLeave(string nick, string hostmask, string channel)
+		public override void OnUserLeave(string nick)
 		{
-			int chan_id = 0;
-			for (; chan_id < lchans.Length; chan_id++) {
-				if (lchans[chan_id] == null)
-					continue;
+			Channel channel = p_manager.GetChannel();
+			LGameChannel c = GetLChannel(channel.GetName());
 
-				if (lchans[chan_id].name == channel)
-					break;
-			}
-
-			if (chan_id == lchans.Length)
-				return;
-
-			LGameChannel c = lchans[chan_id];
-			if (!RemovePlayer(ref c, nick))
+			if (c == null || !RemovePlayer(ref c, nick))
 				return; // Player was not part of the round
 
 			if (c.lg_players.Count < 3 && c.lg_running) {
-				lchans[chan_id] = null;
-				E.Say(channel, "Game ended.");
+				lchans.Remove(c);
+				channel.Say("Game ended.");
 			} else if (c.lg_running) {
-				E.Say(channel, nick + " left the game. Next player: " + c.lg_players[c.lg_nick].nick);
+				channel.Say(nick + " left the game. Next player: " + c.lg_players[c.lg_nick].nick);
 			} else {
-				E.Say(channel, nick + " left the game.");
+				channel.Say(nick + " left the game.");
 			}
 		}
 
@@ -468,7 +449,7 @@ namespace MAIN
 
 		int FindPlayer(string channel, string nick)
 		{
-			for (int i = 0; i < lchans.Length; i++) {
+			for (int i = 0; i < lchans.Count; i++) {
 				if (lchans[i] == null)
 					continue;
 				if (lchans[i].name != channel)
@@ -502,9 +483,10 @@ namespace MAIN
 			return true;
 		}
 
-		void CheckCards(string channel, string nick = null)
+		void CheckCards(string nick = null)
 		{
-			LGameChannel c = getChannelId(channel);
+			Channel chan = p_manager.GetChannel();
+			LGameChannel c = GetLChannel(chan.GetName());
 			if (c == null || !c.lg_running)
 				return;
 
@@ -535,7 +517,7 @@ namespace MAIN
 						}
 					}
 					if (discarded.Count > 0) {
-						E.Say(channel, info.nick + " can discard four " + FormatCards(discarded) + " cards. Left cards: " +
+						chan.Say(info.nick + " can discard four " + FormatCards(discarded) + " cards. Left cards: " +
 							c.lg_players[i].cards.Count);
 						Thread.Sleep(300);
 					}
@@ -543,21 +525,21 @@ namespace MAIN
 
 				if (amount == 0) {
 					if (nick == null || (nick != null && nick != info.nick)) {
-						E.Say(channel, info.nick + " has no cards left. Congratulations, you're a winner!");
+						chan.Say(info.nick + " has no cards left. Congratulations, you're a winner!");
 						player_remove.Add(info.nick);
 					} else {
-						E.Say(channel, info.nick + " played " + (char)3 + "07their last card" + (char)15 + "!");
+						chan.Say(info.nick + " played " + (char)3 + "07their last card" + (char)15 + "!");
 					}
 				} else if (amount <= 3) {
 					if (nick != null && nick == info.nick) {
-						E.Say(channel, info.nick + " has " + (char)3 + "07only "
+						chan.Say(info.nick + " has " + (char)3 + "07only "
 							+ amount + " cards" + (char)15 + " left!");
 					}
 				}
 			}
 
-			foreach (string p in player_remove)
-				OnUserLeave(p, "", channel);
+			foreach (string player in player_remove)
+				OnUserLeave(player);
 		}
 
 		int WrapIndex(LGameChannel c, int index)
@@ -570,17 +552,9 @@ namespace MAIN
 			return index;
 		}
 
-		LGameChannel getChannelId(string name)
+		LGameChannel GetLChannel(string name)
 		{
-			for (int i = 0; i < lchans.Length; i++) {
-				if (lchans[i] == null)
-					continue;
-
-				if (lchans[i].name == name)
-					return lchans[i];
-			}
-
-			return null;
+			return lchans.Find(item => item.name == name);
 		}
 	}
 }

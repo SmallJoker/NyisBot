@@ -1,5 +1,4 @@
 ﻿#define LINUX
-//#define USE_ACC_FOR_NICKSERV
 
 using System;
 using System.Net.Sockets;
@@ -9,25 +8,7 @@ using System.Runtime.InteropServices;
 
 namespace MAIN
 {
-	class Channel
-	{
-		public string name;
-		// <nick, hostmask> (user init!)
-		public Dictionary<string, string> nicks;
-
-		public Channel(string channel_name)
-		{
-			name = channel_name;
-			nicks = new Dictionary<string, string>();
-		}
-
-		public bool contains(string nickname)
-		{
-			return nicks.ContainsKey(nickname);
-		}
-	}
-
-	class E : Actions
+	class E
 	{
 		#region Constants
 		const string RANK_CHAR = "~&@%+";
@@ -35,12 +16,6 @@ namespace MAIN
 		const int CHANNEL_MAX = 20;
 		public static System.Text.Encoding enc = System.Text.Encoding.UTF8;
 		#endregion
-
-		m_Tell tell_module;
-		m_lGame lgame_module;
-		m_Lua lua_module;
-		m_GitHub github_module;
-		m_TimeBomb timebomb_module;
 
 		#region Other variables
 		static TcpClient cli;
@@ -54,13 +29,15 @@ namespace MAIN
 			ready_sent;
 
 		public static bool running;
-		public static Channel[] chans;
+		public static Manager manager;
 		public static Random rand;
+		public static Action OnPong, OnBotReady;
 		#endregion
 
 		#region Init functions
 		public E()
 		{
+			manager = new Manager();
 			rand = new Random((int)DateTime.UtcNow.Ticks);
 
 			address = G.settings["address"].ToLower();
@@ -71,8 +48,8 @@ namespace MAIN
 
 		void Initialize()
 		{
-			ResetActions();
-			chans = new Channel[CHANNEL_MAX];
+			manager.ClearChannels();
+			manager.RenewModules();
 
 			nickname_sent = false;
 			identified = false;
@@ -141,6 +118,7 @@ namespace MAIN
 						Console.WriteLine(query);
 						Console.WriteLine(e.ToString());
 					}
+					manager.SetActiveChannel(null);
 				}
 			}
 			L.Log("E::LoopThread, Disconneted", true);
@@ -163,19 +141,13 @@ namespace MAIN
 		{
 			L.Log("E::Restart called");
 			Initialize();
-			Start(true);
+			Start();
 		}
 
-		public void Start(bool is_restart = false)
+		public void Start()
 		{
 			running = true;
 			last_ping = 360;
-
-			tell_module = new m_Tell(is_restart);
-			lgame_module = new m_lGame(is_restart);
-			lua_module = new m_Lua();
-			github_module = new m_GitHub();
-			timebomb_module = new m_TimeBomb();
 
 			parser = new Thread(LoopThread);
 			parser.Start();
@@ -183,9 +155,9 @@ namespace MAIN
 			new Thread(TimeoutThread).Start();
 		}
 
-		public bool Stop(int _ = 0)
+		public bool Stop()
 		{
-			OnExit();
+			manager.ClearModules();
 
 			if (!running)
 				return false;
@@ -204,19 +176,16 @@ namespace MAIN
 			stream.Close();
 			cli.Close();
 
-			for (int i = 0; i < chans.Length; i++)
-				chans[i] = null;
-
-			return false;
+			manager.ClearChannels();
+			return true;
 		}
 		#endregion
 
-		void OnChatMessage(string nick, string hostmask, string channel, string message)
+		void OnUserSay(string nick, string message)
 		{
 			if (message.Length < 4)
 				return;
 
-			#region HEAD
 			#region CTCP
 			string message_l = message.ToLower();
 			if (message_l == "\x01version\x01") {
@@ -231,7 +200,12 @@ namespace MAIN
 			}
 			#endregion
 
-			bool is_private = (channel[0] != '#');
+			Channel chan = manager.GetChannel();
+			L.Log(chan.GetName() + "\t <" + nick + "> " + message);
+
+			//if (chan.IsPrivate())
+			//	chan.nicks[nick] = hostmask;
+
 			#region Args
 			string[] args = message.Split(' ');
 			int length = 0;
@@ -250,60 +224,39 @@ namespace MAIN
 			for (int i = length; i < args.Length; i++)
 				args[i] = "";
 			#endregion
-			Channel chan;
-			#region Get and update channel
-			if (!is_private) {
-				int id;
-				for (id = 0; id < chans.Length; id++) {
-					if (chans[id] != null && chans[id].name == channel)
-						break;
-				}
-
-				if (id == chans.Length) {
-					L.Log("E::OnChatMessage, Channel not added yet: " + channel);
-					return;
-				}
-				chan = chans[id];
-			} else {
-				chan = new Channel(nick);
-			}
-			chan.nicks[nick] = hostmask;
-			#endregion
-
-			L.Log(channel + "\t <" + nick + "> " + message);
-			#endregion
 
 			#region Pending NickServ requests
 			if (nick == "NickServ" && length >= 3) {
-#if USE_ACC_FOR_NICKSERV
+				// NickServ can send different kinds of answers
+				m_Lua module = (m_Lua)manager.GetModule("Lua");
+
 				if (args[1] == "ACC") {
-					if (lua_module != null)
-						lua_module.userstatus_queue[args[0]] = args[2][0] - '0';
+					if (module != null)
+						module.userstatus_queue[args[0]] = args[2][0] - '0';
 					return;
 				}
-#else
 				if (args[0] == "STATUS") {
-					if (lua_module != null)
-						lua_module.userstatus_queue[args[1]] = args[2][0] - '0';
+					if (module != null)
+						module.userstatus_queue[args[1]] = args[2][0] - '0';
 					return;
 				}
-#endif
+
 				return;
 			}
 			#endregion
 
-
 			if (args[0] == ".bots") {
-				Say(channel, G.settings["identifier"]);
+				chan.Say(G.settings["identifier"]);
 				return;
 			}
 
 			#region CMD detection
 			if (args[0][0] == '$') {
-				// Do nothing :)
+				// Continue
 			} else if (length > 1 &&
 				args[0].ToLower() == G.settings["nickname"].ToLower() + ":") {
 
+				// Treat "BotName:" like "$"
 				for (int i = 1; i < length; i++)
 					args[i - 1] = args[i];
 				length--;
@@ -316,109 +269,7 @@ namespace MAIN
 
 			#endregion
 
-			OnUserSay(nick, ref chan, message, length, ref args);
-
-			switch (args[0]) {
-			#region MISC
-			case "$help":
-				if (args[1].ToLower() == "lgame") {
-					Say(channel, nick + ": $ljoin, $lleave, $lstart, $ladd, $lcheck, $lcards. " +
-						"You can find a tutorial in the help file.");
-					return;
-				}
-				Say(channel, nick + ": $info, [$lua/$] <text../help()>, $rev <text..>, " +
-					"$c <text..>, $tell <nick> <text..>, $help lgame, $updghp. See also: " +
-					"https://github.com/SmallJoker/NyisBot/blob/master/HELP.txt");
-				break;
-			case "$info":
-			case "$about":
-				Say(channel, nick + ": " + G.settings["identifier"]);
-				break;
-			case "$join":
-				if (hostmask != G.settings["owner_hostmask"]) {
-					Say(channel, nick + ": who are you?");
-					return;
-				}
-				if (args[1] != "")
-					Join(args[1]);
-				break;
-			case "$part":
-				if (hostmask != G.settings["owner_hostmask"]) {
-					Say(channel, nick + ": who are you?");
-					return;
-				}
-				if (args[1] != "")
-					Part(args[1]);
-				break;
-			#endregion
-			#region Reverse
-			case "$rev": {
-					if (length == 1) {
-						Say(channel, nick + ": Expected arguments: <text ..>");
-						return;
-					}
-
-					string[] msg_parts = new string[length - 1];
-					string special_chars = "<>()\\/[]{}";
-
-					for (int p = 0; p < length - 1; p++) {
-						char[] word = args[p + 1].ToCharArray();
-						char[] revword = new char[word.Length];
-
-						for (int i = 0; i < word.Length; i++) {
-							char cur = word[word.Length - i - 1];
-
-							if (char.IsUpper(word[i]))
-								cur = char.ToUpper(cur);
-							else
-								cur = char.ToLower(cur);
-
-							for (int r = 0; r < special_chars.Length; r += 2) {
-								if (cur == special_chars[r]) {
-									cur = special_chars[r + 1];
-									break;
-								} else if (cur == special_chars[r + 1]) {
-									cur = special_chars[r];
-									break;
-								}
-							}
-							revword[i] = cur;
-						}
-						msg_parts[p] = new string(revword);
-					}
-
-					string reversed = "";
-					foreach (string s in msg_parts)
-						reversed += s + ' ';
-
-					Say(channel, nick + ": " + reversed);
-				}
-				break;
-			#endregion
-			#region Colorize
-			case "$c": {
-					string str = "";
-					for (int i = 1; i < length; i++) {
-						if (i + 1 < length)
-							str += args[i] + ' ';
-						else
-							str += args[i];
-					}
-					System.Text.StringBuilder colorized = new System.Text.StringBuilder(str.Length * 7);
-					for (int i = 0; i < str.Length; i++) {
-						colorized.Append((char)3);
-						if ((i & 1) == 0)
-							colorized.Append("04,09");
-						else
-							colorized.Append("09,04");
-						colorized.Append(str[i]);
-					}
-
-					Say(channel, nick + ": " + colorized.ToString());
-				}
-				break;
-			#endregion
-			}
+			manager.OnUserSay(nick, message, length, ref args);
 		}
 
 		void OnServerMessage(string status, string destination, string content)
@@ -437,35 +288,27 @@ namespace MAIN
 				break;
 			#region Nicklist
 			case "353": {
-					int id = -1;
-					for (int i = 0; i < chans.Length; i++) {
-						if (chans[i] != null && chans[i].name == destination) {
-							id = i;
-							break;
-						}
-					}
-					if (id < 0) {
+					manager.SetActiveChannel(destination);
+					Channel chan = manager.GetChannel();
+
+					if (chan == null) {
 						L.Log("E::OnServerMessage, Channel not added yet: " + destination);
 						return;
 					}
 
-					int pos = 0;
-					while (pos < content.Length) {
-						int end_pos = content.IndexOf(' ', pos);
-						if (end_pos < pos)
+					for (int i = 0; i < content.Length; ++i) {
+						int end_pos = content.IndexOf(' ', i);
+						if (end_pos == -1)
 							end_pos = content.Length;
 
-						if (RANK_CHAR.Contains(content[pos].ToString()))
-							pos++;
+						if (RANK_CHAR.Contains(content[i].ToString()))
+							i++; // Skip rank characters
 
-						string nick = content.Substring(pos, end_pos - pos);
-						chans[id].nicks[nick] = "?";
+						string nick = content.Substring(i, end_pos - i);
+						manager.OnUserJoin(nick, "?");
 
-						pos = end_pos + 1;
-
+						i = end_pos;
 					}
-					if (OnChannelJoin != null)
-						OnChannelJoin(ref chans[id]);
 				}
 				break;
 			#endregion
@@ -501,65 +344,50 @@ namespace MAIN
 		void OnUserEvent(string nick, string hostmask, string status, string channel)
 		{
 			L.Log('[' + status + "] " + channel + "\t : " + nick);
+			manager.SetActiveChannel(channel);
 
 			#region Join
 			if (status == "JOIN") {
-				int id = -1,
-					free = -1;
-				for (int i = 0; i < chans.Length; i++) {
-					if (chans[i] != null) {
-						if (chans[i].name == channel) {
-							id = i;
-							break;
-						}
-					} else if (free < 0)
-						free = i;
+				Channel chan = manager.GetChannel(channel);
+				if (chan == null) {
+					// In case it's the bot who joined
+					chan = new Channel(channel);
+					manager.UnsafeGetChannels().Add(chan);
 				}
-				if (id < 0)
-					id = free;
-
-				if (chans[id] == null)
-					chans[id] = new Channel(channel);
-
-				chans[id].nicks[nick] = hostmask;
-				Actions.OnUserJoin(nick, hostmask, channel);
+				manager.OnUserJoin(nick, hostmask);
 				return;
 			}
 			#endregion
 			#region Leave
 			if (status == "PART" || status == "KICK") {
-				for (int i = 0; i < chans.Length; i++) {
-					if (chans[i] != null &&
-						chans[i].name == channel) {
-
-						if (nick == G.settings["nickname"])
-							chans[i] = null;
-						else
-							chans[i].nicks.Remove(nick);
-
-						OnUserLeave(nick, hostmask, channel);
-						return;
-					}
+				if (nick == G.settings["nickname"]) {
+					// Bot leaves
+					Channel chan = manager.GetChannel();
+					foreach (KeyValuePair<string, string> user in chan.nicks)
+						manager.OnUserLeave(user.Key);
+					manager.UnsafeGetChannels().Remove(chan);
+				} else {
+					manager.OnUserLeave(nick);
 				}
-				L.Log("E::OnUserEvent, unknown channel (" + channel + "), status = " + status, true);
 				return;
 			}
 			#endregion
 			#region Gone
-			if (status == "NICK" || status == "QUIT") {
-				for (int i = 0; i < chans.Length; i++) {
-					if (chans[i] != null) {
-						if (chans[i].nicks.ContainsKey(nick)) {
-							chans[i].nicks.Remove(nick);
-							if (status == "NICK")
-								chans[i].nicks[channel] = hostmask;
-							else
-								OnUserLeave(nick, hostmask, chans[i].name);
-						}
-					}
+			if (status == "NICK") {
+				// User renamed
+				manager.OnUserRename(channel, hostmask, nick);
+				return;
+			}
+			if (status == "QUIT") {
+				// Bot left
+				var chans = manager.UnsafeGetChannels();
+				foreach (Channel chan in chans) {
+					manager.SetActiveChannel(chan.GetName());
+					foreach (KeyValuePair<string, string> user in chan.nicks)
+						manager.OnUserLeave(user.Key);
 				}
-				if (status == "NICK")
-					OnUserRename(channel, hostmask, nick);
+				chans.Clear();
+				manager.SetActiveChannel(null);
 				return;
 			}
 			#endregion
@@ -659,10 +487,12 @@ namespace MAIN
 				if ((status == "PRIVMSG" || status == "NOTICE")
 						&& destination.ToUpper() != "AUTH"
 						&& destination != "*"
-						&& nick != "")
-					OnChatMessage(nick, hostmask, destination, message);
-				else // numbers, AUTH request
+						&& nick != "") {
+					manager.SetActiveChannel(destination);
+					OnUserSay(nick, message);
+				} else { // numbers, AUTH request
 					OnServerMessage(status, destination, message);
+				}
 				return;
 			}
 			#endregion
@@ -685,12 +515,11 @@ namespace MAIN
 
 				read_pos = line.IndexOf(':', min_start) + 1;
 				if (read_pos < 0) {
-					Console.WriteLine(line);
+					L.Log("FetchChat() " + line, true);
 					return;
 				}
 
 				string message = line.Substring(read_pos);
-
 				OnServerMessage(status, args[text_start - 1], message);
 				return;
 			}
@@ -719,13 +548,13 @@ namespace MAIN
 		}
 
 		#region MISC Functions
-		public void Join(string room)
+		public static void Join(string room)
 		{
 			send("JOIN " + room);
 			L.Log("<< JOIN " + room);
 		}
 
-		public void Part(string room)
+		public static void Part(string room)
 		{
 			send("PART " + room);
 			L.Log("<< PART " + room);
@@ -842,30 +671,6 @@ namespace MAIN
 		}
 
 		#endregion
-
-#if !LINUX
-		[DllImport("kernel32", CharSet = CharSet.Auto, SetLastError = true)]
-		private extern static bool GetDevicePowerState(IntPtr hDevice, out bool fOn);
-
-		public static bool HDDisON()
-		{
-			System.IO.FileStream[] files = System.Reflection.Assembly.
-				GetExecutingAssembly().GetFiles();
-
-			if (files.Length > 0) {
-				IntPtr hFile = files[0].SafeFileHandle.DangerousGetHandle();
-				bool is_on = false;
-				bool result = GetDevicePowerState(hFile, out is_on);
-				return result && is_on;
-			}
-			return false;
-		}
-#else
-		public static bool HDDisON()
-		{
-			return true;
-		}
-#endif
 
 		public static void Shuffle<T>(ref List<T> list)
 		{

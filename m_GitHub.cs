@@ -9,33 +9,36 @@ using System.Diagnostics;
 
 namespace MAIN
 {
-	class m_GitHub
+	class m_GitHub : Module
 	{
 		Dictionary<string, List<string>> github_projects;
 		DateTime github_updated;
 		Thread github_thread;
 
-		public m_GitHub()
+		public m_GitHub(Manager manager) : base("GitHub", manager)
 		{
 			github_updated = DateTime.Now;
 			LoadGithubProjects();
 			github_thread = new Thread(NewsFeedThread);
 			github_thread.Start();
-			E.OnUserSay += OnUserSay;
 		}
 
-		void OnUserSay(string nick, ref Channel chan, string message,
-			int length, ref string[] args)
+		public override void OnUserSay(string nick, string message,
+				int length, ref string[] args)
 		{
 			if (args[0] != "$updghp")
 				return;
 
-			if (chan.nicks[nick] != G.settings["owner_hostmask"]) {
-				E.Say(chan.name, nick + ": who are you?");
+			Channel channel = p_manager.GetChannel();
+
+			if (channel.nicks[nick] != G.settings["owner_hostmask"]) {
+				channel.Say(nick + ": PERMISSION DENIED");
 				return;
 			}
+
 			LoadGithubProjects();
-			E.Say(chan.name, nick + ": Updated! Got in total " + github_projects.Count + " Github projects to check.");
+			channel.Say(nick + ": Updated! Got in total " +
+				github_projects.Count + " Github projects to check.");
 		}
 
 		void LoadGithubProjects()
@@ -142,17 +145,12 @@ namespace MAIN
 					+ ": " + E.colorize(budspencer, 14)
 					+ " -> https://github.com/" + repo_info[0] + "/commit/" + cappucino;
 
-				if (repo.Value == null) {
-					for (int x = 0; x < E.chans.Length; x++)
-						if (E.chans[x] != null && E.chans[x].name[0] == '#') {
-							Thread.Sleep(200);
-							E.Say(E.chans[x].name, chucknorris);
-						}
-				} else {
-					foreach (string chan in repo.Value) {
-						Thread.Sleep(200);
-						E.Say(chan, chucknorris);
-					}
+				foreach (Channel chan in p_manager.UnsafeGetChannels()) {
+					if (repo.Value != null && !repo.Value.Contains(chan.GetName()))
+						continue; // If limited to certain channels
+
+					Thread.Sleep(200);
+					chan.Say(chucknorris);
 				}
 				count++;
 			}
