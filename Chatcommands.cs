@@ -42,14 +42,14 @@ namespace MAIN
 		/// <returns>Whether the command was handled</returns>
 		public bool Run(string nick, string message)
 		{
-			string cmd = GetNext(ref message);
-
-			if (m_run != null && (cmd == null || m_subcommands.Count == 0)) {
+			if (m_run != null && (message.Length == 0 || m_subcommands.Count == 0)) {
 				m_run(nick, message);
 				return true;
 			}
 
-			if (cmd == null || !m_subcommands.ContainsKey(cmd))
+			string cmd = GetNext(ref message);
+
+			if (!m_subcommands.ContainsKey(cmd))
 				return false;
 
 			return m_subcommands[cmd].Run(nick, message);
@@ -73,11 +73,12 @@ namespace MAIN
 		/// <returns>The next word until 'delim'</returns>
 		public static string GetNext(ref string message, char delim = ' ')
 		{
+			message = message.TrimStart(new char[] { delim });
 			if (message.Length == 0)
 				return "";
 
 			int end_pos = message.IndexOf(delim);
-			if (end_pos == -1)
+			if (end_pos < 0)
 				end_pos = message.Length;
 
 			string part = message.Substring(0, end_pos);

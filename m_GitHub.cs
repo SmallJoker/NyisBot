@@ -22,7 +22,7 @@ namespace MAIN
 			github_thread = new Thread(NewsFeedThread);
 			github_thread.Start();
 
-			p_manager.GetChatcommand().Add("updghp", Cmd_update);
+			p_manager.GetChatcommand().Add("$updghp", Cmd_update);
 		}
 
 		void Cmd_update(string nick, string message)

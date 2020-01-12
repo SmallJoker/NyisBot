@@ -1,7 +1,7 @@
-address = irc.losslessone.com
+address = irc.server.cool
 port    = 6697
 
-identifier = IRC bot - Created by Krock, handcrafted. [C#] 2014-2018
+identifier = IRC bot - Created by Krock, handcrafted. [C#] 2014-2020
 
 nickname = NyisBot
 password = .
@@ -12,7 +12,7 @@ hostserv = false
 owner_hostmask = ~nickname@host.mask
 
 /* Channels must be seperated by spaces */
-channels = #nimg_lobby #agariofreedom
+channels = ##private_bot_test
 
 
 /*

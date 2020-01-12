@@ -88,7 +88,7 @@ namespace MAIN
 			}
 
 			string dst_name = Chatcommand.GetNext(ref message);
-			dst_name = chan.FindNickname(dst_name);
+			dst_name = chan.FindNickname(dst_name, false);
 			if (dst_name == null) {
 				chan.Say(nick + ": Unknown or invalid nickname specified.");
 				return;

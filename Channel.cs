@@ -88,7 +88,7 @@ namespace MAIN
 		/// <param name="nickname">Nickname from erroneous user input</param>
 		public string FindNickname(string nickname, bool use_levenshtein = true)
 		{
-			string nickname_l = nickname.ToLower();
+			string nickname_l = nickname.ToLower().Trim();
 			foreach (KeyValuePair<string, string> user in nicks) {
 				if (user.Key.ToLower() == nickname_l)
 					return user.Key;
