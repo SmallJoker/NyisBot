@@ -59,7 +59,7 @@ namespace MAIN
 			var sub = cmd.Add("$lgame");
 			sub.SetMain(delegate (string nick, string message) {
 				var channel = p_manager.GetChannel();
-				channel.Say(nick + ": " + sub.SubcmdToString() +
+				channel.Say(nick + ": Available subcommands: " + sub.CommandsToString() +
 					". Check out the GitHub repository for a game explanation.");
 			});
 

@@ -23,8 +23,8 @@ namespace MAIN
 			return new TellInfo {
 				dst_nick = data[0],
 				src_nick = data[1],
-				datetime = data[3],
-				text = data[4]
+				datetime = data[2],
+				text = data[3]
 			};
 		}
 	}
@@ -44,6 +44,8 @@ namespace MAIN
 			E.OnPong += delegate {
 				TellSave(false);
 			};
+
+			p_manager.GetChatcommand().Add("$tell", Cmd_tell);
 		}
 
 		~m_Tell()
@@ -73,51 +75,41 @@ namespace MAIN
 			TellTell(nick, nick);
 		}
 
-		public override void OnUserSay(string nick, string message,
-				int length, ref string[] args)
+		void Cmd_tell(string nick, string message)
 		{
-			if (args[0] != "$tell")
-				return;
-
 			Channel channel = p_manager.GetChannel();
-			if (length < 2) {
+			string dst_nick = Chatcommand.GetNext(ref message);
+
+			if (dst_nick.Length < 3) {
 				channel.Say(nick + ": Expected arguments: <nick> <text ..>");
 				return;
 			}
 
-			args[1] = args[1].ToLower();
-			string str = "";
-			for (int i = 2; i < length; i++) {
-				if (i + 1 < length)
-					str += args[i] + ' ';
-				else
-					str += args[i];
-			}
-			if (str.Length < 10) {
+			if (message.Length < 7) {
 				E.Notice(nick, "Too short input text.");
 				return;
 			}
-			if (str.Length > 250) {
+			if (message.Length > 250) {
 				E.Notice(nick, "Too long input text.");
 				return;
 			}
-			if (str == tell_last) {
+			if (message == tell_last) {
 				E.Notice(nick, "Text too repetitive.");
 				return;
 			}
 			foreach (TellInfo info in tell_text) {
-				if (info.text == str && CheckSimilar(info.dst_nick, args[1])) {
+				if (info.text == message && CheckSimilar(info.dst_nick, dst_nick)) {
 					E.Notice(nick, "That message is already in the queue.");
 					return;
 				}
 			}
 
-			tell_last = str;
+			tell_last = message;
 
 			var in_channel = new List<Channel>();
 			string user_normal = null;
 			foreach (Channel chan in p_manager.UnsafeGetChannels()) {
-				string found = chan.FindNickname(args[1]);
+				string found = chan.FindNickname(dst_nick);
 				if (found != null) {
 					user_normal = found;
 					in_channel.Add(chan);
@@ -132,17 +124,17 @@ namespace MAIN
 						return;
 					}
 				}
-				in_channel[0].Say(user_normal + ": TELL from " + nick + ": " + str);
+				in_channel[0].Say(user_normal + ": TELL from " + nick + ": " + message);
 				E.Notice(nick, "Message directly sent to " + user_normal +
 					" in channel " + in_channel[0].GetName() + ".");
 				return;
 			}
 
 			tell_text.Add(new TellInfo {
-				dst_nick = args[1],
+				dst_nick = dst_nick,
 				src_nick = nick,
 				datetime = DateTime.UtcNow.ToString("s"),
-				text = str
+				text = message
 			});
 			channel.Say(nick + ": meh okay. I'll look out for that user.");
 			TellSave(true);
@@ -216,12 +208,9 @@ namespace MAIN
 
 			int len;
 			byte[] buf;
-			string[] data = null;
+			string[] data = new string[4];
 
 			while (true) {
-				if (i == 0)
-					data = new string[4];
-
 				len = rd.ReadByte();
 				if (len == 0)
 					break;
@@ -250,17 +239,18 @@ namespace MAIN
 					continue;
 
 				// Nickname match
+				L.Log("src= " + info.src_nick + ", dst= " + info.dst_nick);
 				E.Say(channel, nick + ": [UTC " + info.datetime + "] From " +
 					info.src_nick + ": " + info.text);
 				Thread.Sleep(300);
 
 				removed++;
-				info.dst_nick = null;
+				info.src_nick = null;
 			}
 			if (removed == 0)
 				return;
 
-			tell_text.RemoveAll(item => item.dst_nick == null);
+			tell_text.RemoveAll(item => item.src_nick == null);
 			tell_save_required = true;
 		}
 	}

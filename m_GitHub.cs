@@ -21,18 +21,16 @@ namespace MAIN
 			LoadGithubProjects();
 			github_thread = new Thread(NewsFeedThread);
 			github_thread.Start();
+
+			p_manager.GetChatcommand().Add("updghp", Cmd_update);
 		}
 
-		public override void OnUserSay(string nick, string message,
-				int length, ref string[] args)
+		void Cmd_update(string nick, string message)
 		{
-			if (args[0] != "$updghp")
-				return;
-
 			Channel channel = p_manager.GetChannel();
 
-			if (channel.nicks[nick] != G.settings["owner_hostmask"]) {
-				channel.Say(nick + ": PERMISSION DENIED");
+			if (channel.GetHostmask(nick) != G.settings["owner_hostmask"]) {
+				channel.Say(nick + ": Permission denied");
 				return;
 			}
 

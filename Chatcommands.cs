@@ -55,8 +55,8 @@ namespace MAIN
 			return m_subcommands[cmd].Run(nick, message);
 		}
 
-		/// <returns>List of subcommands as string</returns>
-		public string SubcmdToString()
+		/// <returns>List of (sub)commands as string</returns>
+		public string CommandsToString()
 		{
 			var commands = new List<string>();
 			foreach (KeyValuePair<string, Chatcommand> sub_cmd in m_subcommands) {
@@ -65,7 +65,7 @@ namespace MAIN
 				else
 					commands.Add(sub_cmd.Key);
 			}
-			return "Available subcommands: " + String.Join(", ", commands);
+			return String.Join(", ", commands);
 		}
 
 
@@ -74,7 +74,7 @@ namespace MAIN
 		public static string GetNext(ref string message, char delim = ' ')
 		{
 			if (message.Length == 0)
-				return null;
+				return "";
 
 			int end_pos = message.IndexOf(delim);
 			if (end_pos == -1)
@@ -86,7 +86,7 @@ namespace MAIN
 			else
 				message = "";
 
-			return part;
+			return part.Trim();
 		}
 
 		public static string[] Split(string message)

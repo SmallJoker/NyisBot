@@ -18,6 +18,22 @@ namespace MAIN
 		}
 	}
 
+	class SucklessTimer : System.Timers.Timer
+	{
+		private DateTime m_due;
+		public SucklessTimer(double interval) : base()
+		{
+			base.Interval = interval;
+			m_due = DateTime.Now.AddMilliseconds(interval);
+			base.Start();
+		}
+
+		public double GetRemaining()
+		{
+			return (m_due - DateTime.Now).TotalMilliseconds;
+		}
+	}
+
 	class m_TimeBomb : Module
 	{
 		static string[] colors = {
@@ -41,12 +57,95 @@ namespace MAIN
 		{
 			m_timers = new Dictionary<string, DisarmData>();
 			m_cooldown = new Dictionary<string, SucklessTimer>();
+
+			var cmd = p_manager.GetChatcommand();
+			cmd.Add("$timebomb", Cmd_timebomb);
+			cmd.Add("$cutwire", Cmd_cutwire);
 		}
 
 		public override void CleanStage()
 		{
 			m_timers.Clear();
 			m_cooldown.Clear();
+		}
+
+		void Cmd_timebomb(string nick, string message)
+		{
+			Channel chan = p_manager.GetChannel();
+			if (chan.IsPrivate())
+				return;
+
+			string channel = chan.GetName();
+
+			if (m_timers.ContainsKey(channel)) {
+				chan.Say("Only one timebomb is allowed at a time.");
+				return;
+			}
+			if (m_cooldown.ContainsKey(channel)) {
+				chan.Say("Assemblying a new bomb. Please wait... (" +
+					(int)(m_cooldown[channel].GetRemaining() / 1000.0) + "s)");
+				return;
+			}
+
+			string dst_name = Chatcommand.GetNext(ref message);
+			dst_name = chan.FindNickname(dst_name);
+			if (dst_name == null) {
+				chan.Say(nick + ": Unknown or invalid nickname specified.");
+				return;
+			}
+
+			// Take a random amount from "colors"
+			string[] choices = new string[E.rand.Next(2, 5)];
+			string choice_str = "";
+			for (int i = 0; i < choices.Length; ++i) {
+				choices[i] = colors[E.rand.Next(colors.Length)];
+				// Format chat output
+				choice_str += choices[i];
+				if (i < choices.Length - 1)
+					choice_str += ", ";
+			}
+			string color = choices[E.rand.Next(choices.Length)];
+
+			var data = new DisarmData(dst_name, color, E.rand.Next(50, 90) * 1000.0);
+			data.timer.Elapsed += delegate {
+				BoomTimerElapsed(channel);
+			};
+
+			m_timers[channel] = data;
+			chan.Say(dst_name + ": Tick tick.. " + (int)(data.timer.Interval / 1000.0) +
+				"s until explosion. Try $cutwire <color> from one of these colors: " + choice_str);
+		}
+
+		void Cmd_cutwire(string nick, string message)
+		{
+			Channel chan = p_manager.GetChannel();
+			string channel = chan.GetName();
+
+			if (!m_timers.ContainsKey(channel)) {
+				chan.Say("There's no timebomb to disarm.");
+				return;
+			}
+			var data = m_timers[channel];
+			if (data.nick != nick) {
+				chan.Say(nick + ": You may not help to disarm the bomb.");
+				return;
+			}
+
+			int color_i = Array.IndexOf(colors, Chatcommand.GetNext(ref message));
+
+			if (color_i < 0) {
+				chan.Say(nick + ": Unknown or missing wire color.");
+				return;
+			}
+
+			if (data.color != colors[color_i]) {
+				// Explode instantly
+				BoomTimerElapsed(channel);
+				return;
+			}
+			// Disarmed
+			m_timers.Remove(channel);
+			chan.Say(nick + ": You successfully disarmed the bomb.");
 		}
 
 		void BoomTimerElapsed(string channel)
@@ -74,103 +173,5 @@ namespace MAIN
 			m_timers.Remove(channel);
 		}
 
-		public override void OnUserSay(string nick, string message,
-				int length, ref string[] args)
-		{
-			Channel chan = p_manager.GetChannel();
-			if (chan.IsPrivate())
-				return;
-
-			string channel = chan.GetName();
-
-			switch (args[0]) {
-			case "$timebomb": {
-					if (m_timers.ContainsKey(channel)) {
-						chan.Say("Only one timebomb is allowed at a time.");
-						return;
-					}
-					if (m_cooldown.ContainsKey(channel)) {
-						chan.Say("Field is too hot. Need to cooldown first. (" +
-							(int)(m_cooldown[channel].GetRemaining() / 1000.0) + "s)");
-						return;
-					}
-
-					string dst_name = chan.FindNickname(args[1]);
-					if (dst_name == null) {
-						chan.Say(nick + ": Unknown nickname '" + args[1] + "'");
-						return;
-					}
-
-					// Take a random amount from "colors"
-					string[] choices = new string[E.rand.Next(2, 5)];
-					string choice_str = "";
-					for (int i = 0; i < choices.Length; ++i) {
-						choices[i] = colors[E.rand.Next(colors.Length)];
-						// Format chat output
-						choice_str += choices[i];
-						if (i < choices.Length - 1)
-							choice_str += ", ";
-					}
-					string color = choices[E.rand.Next(choices.Length)];
-
-					var data = new DisarmData(dst_name, color, E.rand.Next(50, 90) * 1000.0);
-					data.timer.Elapsed += delegate {
-						BoomTimerElapsed(channel);
-					};
-
-					m_timers[channel] = data;
-					chan.Say(dst_name + ": Tick tick.. " + (int)(data.timer.Interval / 1000.0) +
-						"s until explosion. Try $cutwire <color> from one of these colors: " + choice_str);
-				}
-				return;
-			case "$cutewire":
-					chan.Say(nick + ": Are you stupid or what? Try better next time.");
-				return;
-			case "$cutwire": {
-					if (!m_timers.ContainsKey(channel)) {
-						chan.Say("There's no timebomb to disarm.");
-						return;
-					}
-					var data = m_timers[channel];
-					if (data.nick != nick) {
-						chan.Say(nick + ": You may not help to disarm the bomb.");
-						return;
-					}
-					args[1] = args[1].ToLower();
-					int color_i = Array.IndexOf(colors, args[1]);
-
-					if (color_i < 0) {
-						chan.Say(nick + ": Unknown or missing wire color.");
-						return;
-					}
-
-					if (data.color != colors[color_i]) {
-						// Explode instantly
-						BoomTimerElapsed(channel);
-						return;
-					}
-					// Disarmed
-					m_timers.Remove(channel);
-					chan.Say(nick + ": You successfully disarmed the bomb.");
-				}
-				return;
-			}
-		}
-	}
-
-	class SucklessTimer : System.Timers.Timer
-	{
-		private DateTime m_due;
-		public SucklessTimer(double interval) : base()
-		{
-			base.Interval = interval;
-			m_due = DateTime.Now.AddMilliseconds(interval);
-			base.Start();
-		}
-
-		public double GetRemaining()
-		{
-			return (m_due - DateTime.Now).TotalMilliseconds;
-		}
 	}
 }

@@ -345,8 +345,14 @@ namespace MAIN
 				if (nick == G.settings["nickname"]) {
 					// Bot leaves
 					Channel chan = manager.GetChannel();
+					// manager.OnUserLeave() modifies 'chan.nicks'
+					// Copy the nicknames to a new list
+					var to_remove = new List<string>(chan.nicks.Count);
 					foreach (KeyValuePair<string, string> user in chan.nicks)
-						manager.OnUserLeave(user.Key);
+						to_remove.Add(user.Key);
+					foreach(string nick_ in to_remove)
+						manager.OnUserLeave(nick_);
+
 					manager.UnsafeGetChannels().Remove(chan);
 				} else {
 					manager.OnUserLeave(nick);
