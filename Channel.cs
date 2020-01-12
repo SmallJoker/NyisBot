@@ -116,14 +116,17 @@ namespace MAIN
 	{
 		List<Module> m_modules;
 		List<Channel> m_channels;
+		Chatcommand m_chatcommands;
 		string m_active_channel;
 
 		public Manager()
 		{
 			m_modules = new List<Module>();
 			m_channels = new List<Channel>();
+			m_chatcommands = new Chatcommand();
 		}
 
+		#region MODULES
 		public void AddModule(Module module)
 		{
 			if (GetModule(module.GetName()) != null)
@@ -161,7 +164,9 @@ namespace MAIN
 
 			m_modules.Clear();
 		}
+		#endregion
 
+		#region CHANNELS
 		public ref List<Channel> UnsafeGetChannels()
 		{
 			return ref m_channels;
@@ -199,6 +204,14 @@ namespace MAIN
 		{
 			m_active_channel = channel_name;
 		}
+		#endregion
+
+		#region CHATCOMMANDS
+		public Chatcommand GetChatcommand()
+		{
+			return m_chatcommands;
+		}
+		#endregion
 
 		#region CALLBACKS
 		public void OnUserJoin(string nick, string hostmask)
@@ -241,6 +254,8 @@ namespace MAIN
 		{
 			foreach (Module module in m_modules)
 				module.OnUserSay(nick, message, length, ref args);
+
+			m_chatcommands.Run(nick, message);
 		}
 		#endregion
 	}

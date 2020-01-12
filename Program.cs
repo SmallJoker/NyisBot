@@ -203,20 +203,18 @@ namespace MAIN
 			Channel chan = manager.GetChannel();
 			L.Log(chan.GetName() + "\t <" + nick + "> " + message);
 
-			//if (chan.IsPrivate())
-			//	chan.nicks[nick] = hostmask;
-
 			#region Args
-			string[] args = message.Split(' ');
-			int length = 0;
-
-			for (int i = 0; i < args.Length; i++) {
-				if (i != length)
-					args[length] = args[i];
-
-				if (args[i] != "")
-					length++;
+			{
+				string to_replace = G.settings["nickname"] + ": ";
+				if (message.StartsWith(to_replace, StringComparison.OrdinalIgnoreCase)) {
+					message = message.Substring(to_replace.Length).Trim();
+					if (message.Length > 0 && message[0] != '$')
+						message = '$' + message;
+				}
 			}
+
+			string[] args = Chatcommand.Split(message);
+			int length = args.Length;
 
 			if (args.Length < 10)
 				Array.Resize(ref args, 10);
@@ -250,24 +248,8 @@ namespace MAIN
 				return;
 			}
 
-			#region CMD detection
-			if (args[0][0] == '$') {
-				// Continue
-			} else if (length > 1 &&
-				args[0].ToLower() == G.settings["nickname"].ToLower() + ":") {
-
-				// Treat "BotName:" like "$"
-				for (int i = 1; i < length; i++)
-					args[i - 1] = args[i];
-				length--;
-				if (args[0][0] != '$')
-					args[0] = '$' + args[0];
-				args[length] = "";
-			} else {
+			if (message.Length < 4 || message[0] != '$')
 				return;
-			}
-
-			#endregion
 
 			manager.OnUserSay(nick, message, length, ref args);
 		}
