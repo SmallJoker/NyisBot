@@ -113,7 +113,7 @@ namespace MAIN
 					}
 					string color = choices[E.rand.Next(choices.Length)];
 
-					var data = new DisarmData(dst_name, color, E.rand.Next(30, 70) * 1000.0);
+					var data = new DisarmData(dst_name, color, E.rand.Next(50, 90) * 1000.0);
 					data.timer.Elapsed += delegate {
 						BoomTimerElapsed(channel);
 					};

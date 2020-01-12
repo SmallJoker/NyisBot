@@ -489,6 +489,9 @@ namespace MAIN
 						&& destination != "*"
 						&& nick != "") {
 					manager.SetActiveChannel(destination);
+					Channel channel = manager.GetChannel();
+					channel.nicks[nick] = hostmask;
+
 					OnUserSay(nick, message);
 				} else { // numbers, AUTH request
 					OnServerMessage(status, destination, message);
