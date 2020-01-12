@@ -49,7 +49,8 @@ By default, there are some functions you can call directly without having to do 
 
 If you want to get all links which are stored in the bot, use this command:
 > $ link("list")
-The braces tell our Lua intepreter to call a function. The string "list" is an argument that is submitted to the function.
+The braces tell our Lua intepreter to call a function. The string "list" is an argument
+that is submitted to the function.
 
 There might be more arguments required, for the math.round function, as example.
 Use Lua to round a number and show 1 digit after the decimal point:
@@ -64,7 +65,8 @@ Sometimes it's good to know if there are other things that can be used. For this
  check out the available Lua modules/scripts that can be included to the bot.
 > $ help()
 
-Call the special Lua function "dofile" to include a file to your command to call a function inside the loaded module.
+Call the special Lua function "dofile" to include a file to
+your command to call a function inside the loaded module.
 > $ noobgen.generate(2)
 
 
@@ -227,9 +229,6 @@ $info
 $next
 	^ Another satisfied customer. Next!
 
-$rev <text>
-	^ Reverses the text in a special way
-
 $tell <nick> <text>
 	^ Tells the nick your text when (s)he joins a channel where the bot is present
 	^ Detection sensivity: Nicknames can have 1 typo per 4 characters in the name
@@ -237,47 +236,61 @@ $tell <nick> <text>
 
  The cheat game
 ================
-This is a special cards game where lying skills are required.
-Complicated and much time-taking wikipedia article: https://en.wikipedia.org/wiki/Cheat_%28game%29
+This game is a turn-based cards game all about lying and and tricking your opponents.
+
+Win condition: get rid of ALL your cards - no matter how it's done
+Game duration: up to 30 minutes
+
+Much more information here: https://en.wikipedia.org/wiki/Cheat_%28game%29
 
 
  Theory of the game
 --------------------
-There are in total 35 cards. Four of each type (6, 7, 8, 9, 10, J, K, A) and three queens.
-The target is to get ALL your cards away with lying and tricking the other players.
-After the game started you will get ~ (35 / players) cards to use in the game.
+By default there is a total of 35 cards which will be dealt evenly upon game start:
+	* four of each type (6, 7, 8, 9, 10, J, K, A)
+	* three queens to prevent players from winning
 
-There is a stack with a "main card", if it's your turn, you must play a card with this type.
-It does not matter if it's a fake card or a correct one as long the other players think it's a correct one.
-To place a card on top of the stack, you only need the index of the card in your hand,
- so the other players do not know if your card is correct or not.
+Cards must be placed onto the game central stack which only allows one kind of card.
+A turn in-game looks as follows:
 
-! This game might take up 30 minutes until someone wins !
+	<BotName> [LGame] Main card: [A], Stack height: 2, Next player: XxFooBar123xX
+	-Notice-  Your cards: 1[A] 2[K] 3[10] 4[A] 5[8]
+	_____________________ ^ Card index ____ ^ Card type
+
+The main card specifies which kind of card that should be added on top of the stack.
+Use your card's index (black number) to play the corresponding card from your hand.
+
+This way you can either lie:
+	> $lgame add A 3
+Or tell the turth: (example with multiple cards)
+	> $lgame add A 1 4
+
+Afterwards your opponent can decide whether to check your cards or to continue.
+	> $lgame check
+	If your placed cards were correct: the opponent takes the entire stack.
+	If your placed cards were incorrect: you take the entire stack.
+
+Four similar cards (example: A A A A) will automatically be discarded (like in the quartet game).
+
+As soon the stack was taken (after each check), the next player can chose the next
+card that is used as "main card". Example:
+	> $lgame add K 5
+
+The game continues until there are only two players left.
 
 
- Joining and leaving
----------------------
-Joining and leaving is totally easy and uses these two commands:
-> $ljoin
-> $lleave
+ Start a game
+--------------
+Use following commands to join or leave:
+	> $lgame join
+	> $lgame leave
 
-You can leave a game while it's running but not join it again.
-Leaving the channel or chaning the nickname will kick you out of the game too.
+As soon there are at least three players, the game may begin:
+	> $lgame start
 
-
- Cards on the stack
---------------------
-As the game began with 3 or more players, there's no stack to begin with, so you must start a new one.
-First, you say which card type it is, then the index of the card in your hand to put down and add as many other card indices you want. (No limits)
-> $ladd <card type> <index> [<index> ..]
-
-So if you got the following cards in your hand and you want to start a stack with the card 6, you might have something like this:
-> $lcards
-Your cards: 1[8] 2[K] 3[10] 4[6] 5[8] 6[A] 7[6] 8[6]
-> $ladd 6 4 7
-
-Now you have set the main card to "6" and placed the card indices 4 ("6") and 7 ("6") on the empty stack.
-Remember! You can start like this whenever there's no stack available.
+The first player starts with an empty stack, thus they may start a new one:
+	Main card = 9, taken from index 4 of the hand
+	> $lgame add 9 4
 
 
  Tricking the players
@@ -297,7 +310,8 @@ In the other case, if one or more top cards are not correct, the complete stack 
 In this variant of cheat game, there's a bad card type: the queen.
 Whenever you have 4 similar cards, they're automatically discarded by the bot.
 But there are only three queens (red marked whenever you see your cards), this means they can not be discarded.
-The best method is to get a queen somehow to a player with less cards by lying, so they can not win the game until the queen is away.
+The best method is to get a queen somehow to a player with less cards by lying,
+so they can not win the game until the queen is away.
 
 
  End of the game
@@ -306,7 +320,8 @@ You win when you have no cards left and the next player did his move.
 The best strategies to reach this are:
 
 - With two cards:
-	First put down a fake card and the real one in the 2nd round, so you have no cards left and the next player can't give you the stack anymore.
+	Put down a fake card first and the real one in round two.
+	You will have no cards left and the next player cannot prevent you from winning.
 
 - With similar cards:
 	Put down a fake card and the other similar cards in the 2nd round, same result as above.
@@ -317,4 +332,4 @@ The best strategies to reach this are:
 
 - Manipulation with communication:
 	Words help - or not. Just try to confuse the people with sentences like
-	"Oh shit! Wrong card" or "Oops, how can I place another card instead?" Be creative :)
+	"Oh shit! Wrong card" or "Oops, how can I place another card instead?".
