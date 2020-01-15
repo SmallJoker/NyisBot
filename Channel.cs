@@ -149,6 +149,7 @@ namespace MAIN
 			m_modules.Add(new m_GitHub(this));
 			m_modules.Add(new m_lGame(this));
 			m_modules.Add(new m_Lua(this));
+			m_modules.Add(new m_SuperiorUno(this));
 			m_modules.Add(new m_Tell(this));
 			m_modules.Add(new m_TimeBomb(this));
 		}

@@ -54,6 +54,8 @@
     <Compile Include="Channel.cs" />
     <Compile Include="m_Builtin.cs" />
     <Compile Include="Chatcommands.cs" />
+    <Compile Include="Utils.cs" />
+    <Compile Include="m_SuperiorUno.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
