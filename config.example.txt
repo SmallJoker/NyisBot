@@ -1,3 +1,4 @@
+/* Server connection */
 address = irc.server.cool
 port    = 6697
 
@@ -6,12 +7,19 @@ identifier = IRC bot - Created by Krock, handcrafted. [C#] 2014-2020
 nickname = NyisBot
 password = .
 
+/* Enable if the real hostname is visible on join
+   The bot will wait for server message 396 (host changed) */
 hostserv = false
+
+/* Defines how to gather user account information.
+   false: Use command "STATUS <nickname>"
+   true:  Use command "ACC <nickname>" */
+nickserv_acc = false
 
 /* Your hostmask. It unlocks the admin commands */
 owner_hostmask = ~nickname@host.mask
 
-/* Channels must be seperated by spaces */
+/* Channels must be separated by spaces */
 channels = ##private_bot_test
 
 

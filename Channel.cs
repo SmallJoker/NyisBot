@@ -97,7 +97,7 @@ namespace MAIN
 					continue;
 
 				double sensivity = Math.Min(user.Key.Length, nickname.Length) / 4.0;
-				double distance = E.LevenshteinDistance(user.Key, nickname);
+				double distance = Utils.LevenshteinDistance(user.Key, nickname);
 
 				if (distance <= sensivity)
 					return user.Key;

@@ -181,7 +181,7 @@ namespace MAIN
 					amount--;
 				}
 			}
-			E.Shuffle(ref cards);
+			Utils.Shuffle(ref cards);
 
 			int player = 0;
 			foreach (string card in cards) {
@@ -217,7 +217,7 @@ namespace MAIN
 			}
 			LGameChannel c = GetLChannel(channel);
 
-			E.Shuffle(ref c.lg_players[player_i].cards);
+			Utils.Shuffle(ref c.lg_players[player_i].cards);
 			E.Notice(nick, FormatCards(c.lg_players[player_i].cards, true));
 		}
 
@@ -296,7 +296,7 @@ namespace MAIN
 			List<int> card_a = new List<int>();
 
 			for (int i = 1; i < args.Length; i++) {
-				int index = E.getInt(args[i]) - 1;
+				int index = Utils.toInt(args[i]) - 1;
 				if (index < 0 || index >= card_mirror.Length) {
 					E.Notice(nick, "Invalid card index \"" + args[i] + "\". Play one between 1 and " +
 						card_mirror.Length + " from your hand.");

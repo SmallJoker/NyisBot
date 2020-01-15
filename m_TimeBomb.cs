@@ -18,22 +18,6 @@ namespace MAIN
 		}
 	}
 
-	class SucklessTimer : System.Timers.Timer
-	{
-		private DateTime m_due;
-		public SucklessTimer(double interval) : base()
-		{
-			base.Interval = interval;
-			m_due = DateTime.Now.AddMilliseconds(interval);
-			base.Start();
-		}
-
-		public double GetRemaining()
-		{
-			return (m_due - DateTime.Now).TotalMilliseconds;
-		}
-	}
-
 	class m_TimeBomb : Module
 	{
 		static string[] colors = {
@@ -82,7 +66,7 @@ namespace MAIN
 				return;
 			}
 			if (m_cooldown.ContainsKey(channel)) {
-				chan.Say("Assemblying a new bomb. Please wait... (" +
+				chan.Say("Assembling a new bomb. Please wait... (" +
 					(int)(m_cooldown[channel].GetRemaining() / 1000.0) + "s)");
 				return;
 			}
@@ -157,6 +141,7 @@ namespace MAIN
 			}
 			// Maybe don't explode at all
 			if (E.rand.Next(0, 100) >= 90) {
+				E.Say(channel, "The bomb appears to be defective.. bad quality.");
 				m_timers.Remove(channel);
 				return;
 			}

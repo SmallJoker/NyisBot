@@ -144,7 +144,7 @@ namespace MAIN
 		{
 			// fooBAR0 fooBOT1 -> 3
 			double sensivity = Math.Min(a.Length, b.Length) / 4.0;
-			double distance = E.LevenshteinDistance(a, b);
+			double distance = Utils.LevenshteinDistance(a, b);
 
 			return distance <= sensivity;
 		}

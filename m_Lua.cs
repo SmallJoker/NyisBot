@@ -215,7 +215,7 @@ namespace MAIN
 			string string_a = Lua.lua_tostring(ptr, 1);
 			string string_b = Lua.lua_tostring(ptr, 2);
 
-			Lua.lua_pushinteger(SE.L, E.LevenshteinDistance(string_a, string_b));
+			Lua.lua_pushinteger(SE.L, Utils.LevenshteinDistance(string_a, string_b));
 			return 1;
 		}
 		int l_getUserstatus(IntPtr ptr)
@@ -243,11 +243,12 @@ namespace MAIN
 			}
 
 			System.Diagnostics.Stopwatch nickserv_time = new System.Diagnostics.Stopwatch();
-#if USE_ACC_FOR_NICKSERV
-			E.Say("NickServ", "ACC " + nick);
-#else
-			E.Say("NickServ", "STATUS " + nick);
-#endif
+
+			if (Utils.isYes(G.settings["nickserv_acc"]) == 1)
+				E.Say("NickServ", "ACC " + nick);
+			else
+				E.Say("NickServ", "STATUS " + nick);
+
 
 			while (nickserv_time.ElapsedMilliseconds < 1500) {
 				if (userstatus_queue.ContainsKey(nick)) {

@@ -138,9 +138,9 @@ namespace MAIN
 				if (budspencer.Length > 160)
 					budspencer = budspencer.Remove(150) + " ...";
 
-				string chucknorris = E.colorize(terencehill, 3)
-					+ " @" + E.colorize(repo.Key.Split('/')[1], 5)
-					+ ": " + E.colorize(budspencer, 14)
+				string chucknorris = Utils.Colorize(terencehill, IRC_Color.GREEN)
+					+ " @" + Utils.Colorize(repo.Key.Split('/')[1], IRC_Color.MAROON)
+					+ ": " + Utils.Colorize(budspencer, IRC_Color.LIGHT_GRAY)
 					+ " -> https://github.com/" + repo_info[0] + "/commit/" + cappucino;
 
 				foreach (Channel chan in p_manager.UnsafeGetChannels()) {

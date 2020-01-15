@@ -41,7 +41,7 @@ namespace MAIN
 			rand = new Random((int)DateTime.UtcNow.Ticks);
 
 			address = G.settings["address"].ToLower();
-			port = getInt(G.settings["port"]);
+			port = Utils.toInt(G.settings["port"]);
 
 			Initialize();
 		}
@@ -223,21 +223,23 @@ namespace MAIN
 				args[i] = "";
 			#endregion
 
-			#region Pending NickServ requests
+			#region Handle NickServ + return
 			if (nick == "NickServ" && length >= 3) {
 				// NickServ can send different kinds of answers
 				m_Lua module = (m_Lua)manager.GetModule("Lua");
 
-				if (args[1] == "ACC") {
-					if (module != null)
+				if (Utils.isYes(G.settings["nickserv_acc"]) == 1) {
+					if (args[1] == "ACC" && module != null) {
 						module.userstatus_queue[args[0]] = args[2][0] - '0';
-					return;
+						return;
+					}
+				} else {
+					if (args[0] == "STATUS" && module != null) {
+							module.userstatus_queue[args[1]] = args[2][0] - '0';
+						return;
+					}
 				}
-				if (args[0] == "STATUS") {
-					if (module != null)
-						module.userstatus_queue[args[1]] = args[2][0] - '0';
-					return;
-				}
+				// Add more here?
 
 				return;
 			}
@@ -300,6 +302,7 @@ namespace MAIN
 				}
 				break;
 			case "396": // Hostmask changed
+				// Requires HostServ to be available and set up
 				if (!ready_sent)
 					OnBotReady();
 				break;
@@ -312,7 +315,8 @@ namespace MAIN
 							Say("NickServ", "identify " + G.settings["password"]);
 						identified = true;
 					}
-					if ((pw_len <= 1 || isYes(G.settings["hostserv"]) == 0)
+
+					if ((pw_len <= 1 || Utils.isYes(G.settings["hostserv"]) == 0)
 							&& content == "+r" && !ready_sent)
 						OnBotReady();
 				}
@@ -613,97 +617,6 @@ namespace MAIN
 				L.Dump("E::send", "", ex.ToString());
 			}
 		}
-
-		public static string colorize(string text, int color)
-		{
-			string start = "" + (char)0x03;
-
-			if (color < 10)
-				start += '0' + color.ToString();
-			else
-				start += color.ToString();
-
-			return start + text + (char)0x0F;
-		}
-
-		double getDouble(string inp)
-		{
-			double ret = 0;
-			double.TryParse(inp, out ret);
-			return ret;
-		}
-
-		public static int getInt(string inp)
-		{
-			int ret = -1;
-			int.TryParse(inp, out ret);
-			return ret;
-		}
-
-		sbyte isYes(string r)
-		{
-			switch (r.ToLower()) {
-			case "yes":
-			case "true":
-			case "1":
-			case "on":
-			case "enable":
-			case "allow":
-				return 1;
-			case "no":
-			case "false":
-			case "0":
-			case "off":
-			case "disable":
-			case "disallow":
-				return 0;
-			}
-			return -1;
-		}
-
 		#endregion
-
-		public static void Shuffle<T>(ref List<T> list)
-		{
-			int n = list.Count;
-			while (n > 1) {
-				n--;
-				int k = rand.Next(n + 1);
-				T value = list[k];
-				list[k] = list[n];
-				list[n] = value;
-			}
-		}
-
-		public static int LevenshteinDistance(string s, string t)
-		{
-			if (string.IsNullOrEmpty(s)) {
-				if (string.IsNullOrEmpty(t))
-					return 0;
-				return t.Length;
-			}
-
-			if (string.IsNullOrEmpty(t))
-				return s.Length;
-
-			int n = s.Length;
-			int m = t.Length;
-			int[,] d = new int[n + 1, m + 1];
-
-			// initialize the top and right of the table to 0, 1, 2, ...
-			for (int i = 0; i <= n; d[i, 0] = i++) ;
-			for (int j = 1; j <= m; d[0, j] = j++) ;
-
-			for (int i = 1; i <= n; i++) {
-				for (int j = 1; j <= m; j++) {
-					int cost = (t[j - 1] == s[i - 1]) ? 0 : 1;
-					int min1 = d[i - 1, j] + 1;
-					int min2 = d[i, j - 1] + 1;
-					int min3 = d[i - 1, j - 1] + cost;
-					d[i, j] = Math.Min(Math.Min(min1, min2), min3);
-				}
-			}
-			return d[n, m];
-		}
 	}
 }
