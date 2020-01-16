@@ -9,8 +9,7 @@ namespace MAIN
 	{
 		STACK_D2 = 0x01, // Stack "draw +2" cards
 		STACK_WD4 = 0x02, // Stack "wild draw +4" cards
-		SKIP_ON_DRAW = 0x04, // Opponent cannot put a card
-		MULTIPLE = 0x08, // Place same cards
+		MULTIPLE = 0x08, // Place same cards (TODO)
 		LIGRETTO = 0x80, // Smash in cards whenever you have a matching one
 	}
 
@@ -34,11 +33,6 @@ namespace MAIN
 			cards = new List<Card>();
 		}
 
-		public Card GetCard(string face)
-		{
-			return cards.Find(item => item.Value == face);
-		}
-
 		public List<Card> DrawCards(int count)
 		{
 			var drawn = new List<Card>();
@@ -60,6 +54,17 @@ namespace MAIN
 			cards.AddRange(drawn);
 			SortCards();
 			return drawn;
+		}
+
+		public int GetCardsValue()
+		{
+			int score = 0;
+			foreach (Card card in cards) {
+				int value = 10;
+				int.TryParse(card.Value, out value);
+				score += value;
+			}
+			return score;
 		}
 
 		public void SortCards()
@@ -113,7 +118,7 @@ namespace MAIN
 	class m_SuperiorUno : Module
 	{
 		public static List<string> card_faces = new List<string>
-		{ "0", "1", "2", "3", "4", "5", "D2", "R", "S", "W", "WD4" };
+		{ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "D2", "R", "S", "W", "WD4" };
 
 		Dictionary<string, UnoChannel> m_channels;
 
@@ -123,11 +128,17 @@ namespace MAIN
 			m_channels = new Dictionary<string, UnoChannel>();
 
 			var cmd = manager.GetChatcommand().Add("$uno");
+			cmd.SetMain(delegate (string nick, string message) {
+				var channel = p_manager.GetChannel();
+				channel.Say(nick + ": Available subcommands: " + cmd.CommandsToString() +
+					". Please check the source code until there's a tutorial.");
+			});
+
 			cmd.Add("join", Cmd_Join);
 			cmd.Add("leave", Cmd_Leave);
-			cmd.Add("start", Cmd_Start);
-			cmd.Add("put", Cmd_Put);
-			cmd.Add("draw", Cmd_Draw);
+			cmd.Add("deal", Cmd_Deal);
+			cmd.Add("p", Cmd_Put);
+			cmd.Add("d", Cmd_Draw);
 		}
 
 		public override void CleanStage()
@@ -145,6 +156,16 @@ namespace MAIN
 				if (chan.Value.current_player == old_nick)
 					chan.Value.current_player = nick;
 			}
+		}
+
+		public override void OnUserLeave(string nick)
+		{
+			Channel channel = p_manager.GetChannel();
+			UnoChannel uno = GetUnoChannel(channel.GetName());
+			if (uno == null)
+				return;
+
+			Cmd_Leave(nick, "");
 		}
 
 		void Cmd_Join(string nick, string message)
@@ -179,7 +200,7 @@ namespace MAIN
 			uno.current_player = nick;
 			channel.Say("[UNO] " + uno.players.Count +
 				" player(s) are waiting for a new UNO game. " +
-				string.Format(" Modes: 0x{0,2:X}", uno.modes));
+				string.Format("Modes: 0x{0:X2}", uno.modes));
 		}
 
 		void Cmd_Leave(string nick, string message)
@@ -199,10 +220,12 @@ namespace MAIN
 
 			uno.players.RemoveAll(item => item.name == nick);
 
-			CheckGameEndDelete(channel.GetName());
+			bool was_active = uno.is_active;
+			if (CheckGameEndDelete(channel.GetName()) && was_active)
+				channel.Say("[UNO] Game ended");
 		}
 
-		void Cmd_Start(string nick, string message)
+		void Cmd_Deal(string nick, string message)
 		{
 			Channel channel = p_manager.GetChannel();
 			UnoChannel uno = GetUnoChannel(channel.GetName());
@@ -220,7 +243,7 @@ namespace MAIN
 			}
 
 			foreach (UnoPlayer player in uno.players)
-				player.DrawCards(8);
+				player.DrawCards(9);
 
 			uno.top_card = nplayer.cards[0];
 			uno.is_active = true;
@@ -255,29 +278,33 @@ namespace MAIN
 			case "y": put_color = CardColor.YELLOW; break;
 			}
 
+			bool change_face = false;
 			if (put_face.Contains("W")) {
 				// Convert/validate W and WD4
-				put_color = CardColor.NONE;
-			} else if (put_color == CardColor.NONE) {
-				E.Notice(nick, "Unknown color. Play W/WD4 as <color> <card>.");
-				return;
+				change_face = true;
 			}
-			if (!card_faces.Contains(put_face)) {
-				E.Notice(nick, "Unknown card face: " + put_face);
+			if (!change_face && put_color == CardColor.NONE ||
+					!card_faces.Contains(put_face)) {
+
+				E.Notice(nick, "Invalid input. Syntax: $uno p <color> <face>.");
 				return;
 			}
 
 			// Check whether color of face matches
 			if (put_color != uno.top_card.Key &&
-				put_face != uno.top_card.Value &&
-				put_color != CardColor.NONE) {
+			    put_face != uno.top_card.Value &&
+			    !change_face) {
 
 				E.Notice(nick, "This card cannot be played. Please check color and face.");
 				return;
 			}
 
-			int card_index = player.cards.FindIndex(
-				item => item.Key == put_color && item.Value == put_face);
+			int card_index = -1;
+			if (change_face)
+				card_index = player.cards.FindIndex(item => item.Value == put_face);
+			else
+				card_index = player.cards.FindIndex(
+					item => item.Key == put_color && item.Value == put_face);
 
 			if (card_index < 0) {
 				E.Notice(nick, "You don't have this card.");
@@ -289,8 +316,8 @@ namespace MAIN
 				if (put_face == "D2" && uno.CheckMode(UnoMode.STACK_D2))
 					ok = true;
 				else if (put_face == "WD4" &&
-				         uno.top_card.Key == CardColor.NONE &&
-				         !uno.CheckMode(UnoMode.STACK_WD4))
+				         put_face == uno.top_card.Value &&
+				         uno.CheckMode(UnoMode.STACK_WD4))
 					ok = true;
 
 				if (!ok) {
@@ -300,27 +327,46 @@ namespace MAIN
 			}
 
 			// All OK. Put the card on top
-			uno.top_card = player.cards[card_index];
+			uno.top_card = new Card(put_color, put_face);
 			player.cards.RemoveAt(card_index);
 
 			bool pending_delete = player.cards.Count == 0;
+			bool pending_autodraw = false;
 
 			switch (put_face) {
-			case "D2": uno.draw_count += 2; break;
-			case "WD4": uno.draw_count += 4; break;
+			case "D2":
+				uno.draw_count += 2;
+				pending_autodraw = !uno.CheckMode(UnoMode.STACK_D2);
+				break;
+			case "WD4":
+				uno.draw_count += 4;
+				pending_autodraw = !uno.CheckMode(UnoMode.STACK_WD4);
+				break;
 			case "R": uno.players.Reverse(); break;
 			case "S": uno.TurnNext(); break;
 			}
 
 			uno.TurnNext();
 
-			if (pending_delete)
+			if (pending_delete) {
+				// 'current_player' may not be 'nick'
 				uno.players.Remove(player);
+			}
+			if (pending_delete && uno.players.Count > 0) {
+				int score = 0;
+				foreach (UnoPlayer up in uno.players)
+					score += up.GetCardsValue();
+
+				channel.Say(nick + " finishes the game and gains " + score + " points");
+			}
 
 			if (CheckGameEndDelete(channel.GetName()))
 				return;
 
-			TellGameStatus(channel);
+			if (pending_autodraw)
+				Cmd_Draw(uno.current_player, "");
+			else
+				TellGameStatus(channel);
 		}
 
 		void Cmd_Draw(string nick, string message)
@@ -339,8 +385,9 @@ namespace MAIN
 				return;
 			}
 
-			player.DrawCards(Math.Max(1, uno.draw_count));
+			var drawn = player.DrawCards(Math.Max(1, uno.draw_count));
 			uno.draw_count = 0;
+			E.Notice(nick, "You drew following cards: " + FormatCards(drawn));
 
 			uno.TurnNext();
 			TellGameStatus(channel);
@@ -354,10 +401,13 @@ namespace MAIN
 		string FormatCards(List<Card> cards)
 		{
 			var sb = new System.Text.StringBuilder();
+			sb.Append((char)0x02); // Bold start
 			foreach (Card card in cards) {
 				// This sucks. Where's my snprintf?
-				sb.Append(Utils.Colorize("[" + card.Value + "] ", (IRC_Color)card.Key));
+				sb.Append(Utils.Colorize("[" + card.Value + "] ", (IRC_Color)card.Key, false));
 			}
+			sb.Append((char)0x0F); // Normal text
+			sb.Append(" ");
 			return sb.ToString();
 		}
 
@@ -369,10 +419,10 @@ namespace MAIN
 
 			var sb = new System.Text.StringBuilder();
 			sb.Append("[UNO] " + uno.current_player);
-			sb.Append(" (" + uno.GetPlayer().cards.Count + " cards): ");
+			sb.Append(" (" + uno.GetPlayer().cards.Count + " cards) - ");
 			sb.Append("Top card: " + FormatCards(new List<Card> { uno.top_card }));
 			if (uno.draw_count > 0)
-				sb.Append(", draw count: " + uno.draw_count);
+				sb.Append("- draw count: " + uno.draw_count);
 
 			channel.Say(sb.ToString());
 
@@ -388,10 +438,7 @@ namespace MAIN
 			if (uno.players.Count > 1)
 				return false;
 
-			if (uno.players.Count == 1 && uno.is_active)
-				E.Say(channel, uno.players[0].name + " lost the game.");
-
-			m_channels[channel] = null;
+			m_channels.Remove(channel);
 			return true;
 		}
 

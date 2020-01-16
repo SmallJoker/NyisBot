@@ -99,7 +99,7 @@ namespace MAIN
 			return d[n, m];
 		}
 
-		public static string Colorize(string text, IRC_Color color)
+		public static string Colorize(string text, IRC_Color color, bool end = true)
 		{
 			int color_i = (int)color;
 			string start = "" + (char)0x03;
@@ -109,7 +109,9 @@ namespace MAIN
 			else
 				start += color_i.ToString();
 
-			return start + text + (char)0x0F;
+			if (end)
+				return start + text + (char)0x0F;
+			return start + text;
 		}
 	}
 
