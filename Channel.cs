@@ -202,6 +202,22 @@ namespace MAIN
 			m_channels.Clear();
 		}
 
+		public void QuitChannel(string channel_name)
+		{
+			Channel channel = GetChannel(channel_name);
+			if (channel == null)
+				return;
+
+			var nicks_copy = new List<string>(channel.nicks.Count);
+			foreach (KeyValuePair<string, string> user in channel.nicks)
+				nicks_copy.Add(user.Key);
+
+			foreach (string nick in nicks_copy)
+				OnUserLeave(nick);
+
+			m_channels.Remove(channel);
+		}
+
 		public void SetActiveChannel(string channel_name)
 		{
 			m_active_channel = channel_name;

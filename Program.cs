@@ -30,7 +30,6 @@ namespace MAIN
 
 		public static bool running;
 		public static Manager manager;
-		public static Random rand;
 		public static Action OnPong, OnBotReady;
 		#endregion
 
@@ -38,7 +37,6 @@ namespace MAIN
 		public E()
 		{
 			manager = new Manager();
-			rand = new Random((int)DateTime.UtcNow.Ticks);
 
 			address = G.settings["address"].ToLower();
 			port = Utils.toInt(G.settings["port"]);
@@ -117,6 +115,7 @@ namespace MAIN
 					} catch (Exception e) {
 						Console.WriteLine(query);
 						Console.WriteLine(e.ToString());
+						L.Dump("E::FetchChat", query, e.ToString());
 					}
 					manager.SetActiveChannel(null);
 				}
@@ -332,7 +331,6 @@ namespace MAIN
 			L.Log('[' + status + "] " + channel + "\t : " + nick);
 			manager.SetActiveChannel(channel);
 
-			#region Join
 			if (status == "JOIN") {
 				Channel chan = manager.GetChannel(channel);
 				if (chan == null) {
@@ -343,46 +341,40 @@ namespace MAIN
 				manager.OnUserJoin(nick, hostmask);
 				return;
 			}
-			#endregion
-			#region Leave
+
 			if (status == "PART" || status == "KICK") {
 				if (nick == G.settings["nickname"]) {
 					// Bot leaves
-					Channel chan = manager.GetChannel();
-					// manager.OnUserLeave() modifies 'chan.nicks'
-					// Copy the nicknames to a new list
-					var to_remove = new List<string>(chan.nicks.Count);
-					foreach (KeyValuePair<string, string> user in chan.nicks)
-						to_remove.Add(user.Key);
-					foreach(string nick_ in to_remove)
-						manager.OnUserLeave(nick_);
+					manager.QuitChannel(channel);
+					return;
+				}
 
-					manager.UnsafeGetChannels().Remove(chan);
-				} else {
+				manager.OnUserLeave(nick);
+				return;
+			}
+
+			if (status == "QUIT") {
+				if (nick == G.settings["nickname"]) {
+					Stop();
+					return;
+				}
+
+				// Regular user leaves
+				foreach (Channel chan in manager.UnsafeGetChannels()) {
+					if (chan.GetHostmask(nick) == null)
+						continue;
+
+					manager.SetActiveChannel(chan.GetName());
 					manager.OnUserLeave(nick);
 				}
 				return;
 			}
-			#endregion
-			#region Gone
+
 			if (status == "NICK") {
 				// User renamed
 				manager.OnUserRename(channel, hostmask, nick);
 				return;
 			}
-			if (status == "QUIT") {
-				// Bot left
-				var chans = manager.UnsafeGetChannels();
-				foreach (Channel chan in chans) {
-					manager.SetActiveChannel(chan.GetName());
-					foreach (KeyValuePair<string, string> user in chan.nicks)
-						manager.OnUserLeave(user.Key);
-				}
-				chans.Clear();
-				manager.SetActiveChannel(null);
-				return;
-			}
-			#endregion
 		}
 
 		// Status codes with text only
@@ -553,6 +545,7 @@ namespace MAIN
 		{
 			send("PART " + room);
 			L.Log("<< PART " + room);
+			manager.QuitChannel(room);
 		}
 
 		void NickAuth(string name)

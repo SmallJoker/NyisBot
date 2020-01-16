@@ -78,19 +78,24 @@ namespace MAIN
 				return;
 			}
 
+			if (dst_name == G.settings["nickname"]) {
+				E.Notice(nick, "You fell for it, fool! Thunder Cross Split Attack!");
+				dst_name = nick;
+			}
+
 			// Take a random amount from "colors"
-			string[] choices = new string[E.rand.Next(2, 5)];
+			string[] choices = new string[Utils.random.Next(2, 5)];
 			string choice_str = "";
 			for (int i = 0; i < choices.Length; ++i) {
-				choices[i] = colors[E.rand.Next(colors.Length)];
+				choices[i] = (string)Utils.RandomIn(colors);
 				// Format chat output
 				choice_str += choices[i];
 				if (i < choices.Length - 1)
 					choice_str += ", ";
 			}
-			string color = choices[E.rand.Next(choices.Length)];
+			string color = (string)Utils.RandomIn(choices);
 
-			var data = new DisarmData(dst_name, color, E.rand.Next(50, 90) * 1000.0);
+			var data = new DisarmData(dst_name, color, Utils.random.Next(50, 90) * 1000.0);
 			data.timer.Elapsed += delegate {
 				BoomTimerElapsed(channel);
 			};
@@ -139,18 +144,21 @@ namespace MAIN
 				m_timers.Remove(channel);
 				return;
 			}
+
+			var data = m_timers[channel];
+			data.timer.Stop();
+
 			// Maybe don't explode at all
-			if (E.rand.Next(0, 100) >= 90) {
+			if (Utils.random.Next(0, 100) >= 90) {
 				E.Say(channel, "The bomb appears to be defective.. bad quality.");
+				data = null;
 				m_timers.Remove(channel);
 				return;
 			}
 
-			var data = m_timers[channel];
-			data.timer.Stop();
 			E.Say(channel, "BOOOM! " + data.nick + " died instantly.");
 
-			var cooldown = new SucklessTimer(E.rand.Next(60, 90) * 1000.0);
+			var cooldown = new SucklessTimer(Utils.random.Next(60, 90) * 1000.0);
 			cooldown.Elapsed += delegate {
 				m_cooldown.Remove(channel);
 			};
