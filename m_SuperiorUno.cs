@@ -60,8 +60,9 @@ namespace MAIN
 		{
 			int score = 0;
 			foreach (Card card in cards) {
-				int value = 10;
-				int.TryParse(card.Value, out value);
+				int value = 0;
+				if (!int.TryParse(card.Value, out value))
+					value = 10;
 				score += value;
 			}
 			return score;
@@ -265,6 +266,7 @@ namespace MAIN
 				E.Notice(nick, "It is not your turn (current: " + uno.current_player + ").");
 				return;
 			}
+			uno.current_player = nick; // UnoMode.LIGRETTO
 
 			string put_color_s = Chatcommand.GetNext(ref message).ToLower();
 			CardColor put_color = CardColor.NONE;
@@ -401,6 +403,7 @@ namespace MAIN
 		string FormatCards(List<Card> cards)
 		{
 			var sb = new System.Text.StringBuilder();
+			sb.Append((char)0x0F); // Normal text
 			sb.Append((char)0x02); // Bold start
 			foreach (Card card in cards) {
 				// This sucks. Where's my snprintf?

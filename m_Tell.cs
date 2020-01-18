@@ -158,8 +158,8 @@ namespace MAIN
 
 			tell_save_required = false;
 
-			System.IO.FileStream stream = new System.IO.FileStream(TELL_TEXT_DB, System.IO.FileMode.OpenOrCreate);
-			System.IO.BinaryWriter wr = new System.IO.BinaryWriter(stream);
+			var stream = new System.IO.FileStream(TELL_TEXT_DB, System.IO.FileMode.OpenOrCreate);
+			var wr = new System.IO.BinaryWriter(stream);
 
 			wr.Write("TT01");
 			byte[] buf;
@@ -251,7 +251,7 @@ namespace MAIN
 				return;
 
 			tell_text.RemoveAll(item => item.src_nick == null);
-			tell_save_required = true;
+			TellSave(true);
 		}
 	}
 }
