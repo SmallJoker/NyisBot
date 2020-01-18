@@ -472,7 +472,12 @@ namespace MAIN
 						&& destination.ToUpper() != "AUTH"
 						&& destination != "*"
 						&& nick != "") {
-					manager.SetActiveChannel(destination);
+
+					if (Channel.IsPrivate(destination))
+						manager.SetActiveChannel(nick); // The tables have turned
+					else
+						manager.SetActiveChannel(destination);
+
 					Channel channel = manager.GetChannel();
 					channel.nicks[nick] = hostmask;
 

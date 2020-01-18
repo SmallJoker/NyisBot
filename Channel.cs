@@ -75,7 +75,12 @@ namespace MAIN
 
 		public bool IsPrivate()
 		{
-			return m_name[0] != '#';
+			return IsPrivate(m_name);
+		}
+
+		public static bool IsPrivate(string channel_name)
+		{
+			return channel_name[0] != '#';
 		}
 
 		/// <returns>Hostmask of the user or null (not found)</returns>
@@ -116,6 +121,7 @@ namespace MAIN
 	{
 		List<Module> m_modules;
 		List<Channel> m_channels;
+		Channel m_tmp_channel;
 		Chatcommand m_chatcommands;
 		string m_active_channel;
 
@@ -186,19 +192,24 @@ namespace MAIN
 				return null;
 
 			Channel channel = GetChannel(m_active_channel);
+			if (channel == null)
+				channel = m_tmp_channel;
+
 			if (channel == null) {
-				channel = new Channel(m_active_channel);
+				// Temporary channel for private messages
+				m_tmp_channel = new Channel(m_active_channel);
+				channel = m_tmp_channel;
 				if (!channel.IsPrivate()) {
 					L.Log("Manager::GetChannel() Channel not found: " + m_active_channel +
 						". Creating temporary object.", true);
 				}
 			}
-			// Temporary channel for private messages
-			return channel != null ? channel : new Channel(m_active_channel);
+			return channel;
 		}
 
 		public void ClearChannels()
 		{
+			SetActiveChannel(null);
 			m_channels.Clear();
 		}
 
@@ -220,6 +231,7 @@ namespace MAIN
 
 		public void SetActiveChannel(string channel_name)
 		{
+			m_tmp_channel = null;
 			m_active_channel = channel_name;
 		}
 		#endregion
