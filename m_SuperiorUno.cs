@@ -26,11 +26,18 @@ namespace MAIN
 	{
 		public string name;
 		public List<Card> cards;
+		UserData m_user;
 
-		public UnoPlayer(string name)
+		public UnoPlayer(string name, UserData user)
 		{
 			this.name = name;
 			cards = new List<Card>();
+			m_user = user;
+		}
+
+		~UnoPlayer()
+		{
+			m_user.cmd_scope = null;
 		}
 
 		public List<Card> DrawCards(int count)
@@ -114,6 +121,30 @@ namespace MAIN
 
 			current_player = players[index].name;
 		}
+
+		public bool RemovePlayer(Channel channel, string nick)
+		{
+			UnoPlayer player = GetPlayer(nick);
+			if (player == null)
+				return false;
+
+			if (current_player == player.name)
+				TurnNext();
+
+			if (is_active) {
+				int score = 0;
+				foreach (UnoPlayer up in players) {
+					if (up != player)
+						score += up.GetCardsValue();
+				}
+
+				channel.Say(player.name + " finishes the game and gains " + score + " points");
+			} else {
+				channel.Say(player.name + " left this UNO game.");
+			}
+			players.Remove(player);
+			return true;
+		}
 	}
 
 	class m_SuperiorUno : Module
@@ -122,6 +153,7 @@ namespace MAIN
 		{ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "D2", "R", "S", "W", "WD4" };
 
 		Dictionary<string, UnoChannel> m_channels;
+		Chatcommand m_subcommand;
 
 
 		public m_SuperiorUno(Manager manager) : base("SuperiorUno", manager)
@@ -129,6 +161,7 @@ namespace MAIN
 			m_channels = new Dictionary<string, UnoChannel>();
 
 			var cmd = manager.GetChatcommand().Add("$uno");
+			m_subcommand = cmd;
 			cmd.SetMain(delegate (string nick, string message) {
 				var channel = p_manager.GetChannel();
 				channel.Say(nick + ": Available subcommands: " + cmd.CommandsToString() +
@@ -163,10 +196,17 @@ namespace MAIN
 		{
 			Channel channel = p_manager.GetChannel();
 			UnoChannel uno = GetUnoChannel(channel.GetName());
-			if (uno == null)
+			string old_player = uno == null ? null : uno.current_player;
+
+			if (uno == null || !uno.RemovePlayer(channel, nick))
 				return;
 
-			Cmd_Leave(nick, "");
+			// Either close the game or echo the status
+			if (!CheckGameEndDelete(channel.GetName())) {
+				if (nick == old_player)
+					TellGameStatus(channel);
+			}
+			GC.Collect(); // Force calling UnoPlayer::~UnoPlayer
 		}
 
 		void Cmd_Join(string nick, string message)
@@ -189,7 +229,7 @@ namespace MAIN
 			if (uno == null) {
 				string modes_s = Chatcommand.GetNext(ref message);
 
-				byte modes = 0;
+				byte modes = 0x03;
 				try {
 					modes = Convert.ToByte(modes_s, 16);
 				} catch { }
@@ -197,8 +237,11 @@ namespace MAIN
 				m_channels[channel.GetName()] = uno;
 			}
 
-			uno.players.Add(new UnoPlayer(nick));
+			UserData user = channel.GetUserData(nick);
+			user.cmd_scope = m_subcommand;
+			uno.players.Add(new UnoPlayer(nick, user));
 			uno.current_player = nick;
+
 			channel.Say("[UNO] " + uno.players.Count +
 				" player(s) are waiting for a new UNO game. " +
 				string.Format("Modes: 0x{0:X2}", uno.modes));
@@ -214,16 +257,7 @@ namespace MAIN
 				return;
 			}
 
-			channel.Say(nick + " left this UNO game.");
-
-			if (uno.current_player == nick)
-				uno.TurnNext();
-
-			uno.players.RemoveAll(item => item.name == nick);
-
-			bool was_active = uno.is_active;
-			if (CheckGameEndDelete(channel.GetName()) && was_active)
-				channel.Say("[UNO] Game ended");
+			OnUserLeave(nick);
 		}
 
 		void Cmd_Deal(string nick, string message)
@@ -332,7 +366,6 @@ namespace MAIN
 			uno.top_card = new Card(put_color, put_face);
 			player.cards.RemoveAt(card_index);
 
-			bool pending_delete = player.cards.Count == 0;
 			bool pending_autodraw = false;
 
 			switch (put_face) {
@@ -350,20 +383,12 @@ namespace MAIN
 
 			uno.TurnNext();
 
-			if (pending_delete) {
-				// 'current_player' may not be 'nick'
-				uno.players.Remove(player);
-			}
-			if (pending_delete && uno.players.Count > 0) {
-				int score = 0;
-				foreach (UnoPlayer up in uno.players)
-					score += up.GetCardsValue();
-
-				channel.Say(nick + " finishes the game and gains " + score + " points");
-			}
+			// Player won. At this point uno.current_player != player.name
+			if (player.cards.Count == 0)
+				uno.RemovePlayer(channel, player.name);
 
 			if (CheckGameEndDelete(channel.GetName()))
-				return;
+				return; // Game ended
 
 			if (pending_autodraw)
 				Cmd_Draw(uno.current_player, "");
@@ -433,17 +458,19 @@ namespace MAIN
 			E.Notice(player.name, "Your cards: " + FormatCards(player.cards));
 		}
 
-		public bool CheckGameEndDelete(string channel)
+		bool CheckGameEndDelete(string channel)
 		{
 			UnoChannel uno = GetUnoChannel(channel);
 			if (uno == null)
 				return true;
+
 			if (uno.players.Count > 1)
 				return false;
 
+			if (uno.is_active)
+				E.Say(channel, "[UNO] Game ended");
 			m_channels.Remove(channel);
 			return true;
 		}
-
 	}
 }
