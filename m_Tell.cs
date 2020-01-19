@@ -66,7 +66,7 @@ namespace MAIN
 		public override void OnUserRename(string nick, string old_nick)
 		{
 			foreach (Channel channel in p_manager.UnsafeGetChannels()) {
-				if (channel.nicks.ContainsKey(nick)) {
+				if (channel.GetUserData(nick) != null) {
 					TellTell(nick, channel.GetName());
 					return;
 				}
@@ -118,7 +118,7 @@ namespace MAIN
 
 			if (in_channel.Count > 0) {
 				foreach (Channel chan in in_channel) {
-					if (chan.GetHostmask(nick) != null) {
+					if (chan.GetUserData(nick) != null) {
 						E.Notice(nick, "Found " + user_normal + " in channel " +
 							chan.GetName() + ". No need to use $tell.");
 						return;

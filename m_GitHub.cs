@@ -29,7 +29,7 @@ namespace MAIN
 		{
 			Channel channel = p_manager.GetChannel();
 
-			if (channel.GetHostmask(nick) != G.settings["owner_hostmask"]) {
+			if (channel.GetUserData(nick).hostmask != G.settings["owner_hostmask"]) {
 				channel.Say(nick + ": Permission denied");
 				return;
 			}

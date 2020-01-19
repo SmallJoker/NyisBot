@@ -22,8 +22,6 @@ namespace MAIN
 		{
 			if (!System.IO.File.Exists("config.example.txt")) {
 				Console.WriteLine("[ERROR] File 'config.example.txt' not found - no future for this bot.");
-				Console.WriteLine("Press any key to continue");
-				Console.ReadKey(false);
 				return;
 			}
 

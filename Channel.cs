@@ -15,6 +15,11 @@ namespace MAIN
 			p_manager = manager;
 		}
 
+		~Module()
+		{
+			CleanStage();
+		}
+
 		#region PUBLIC FUNCTIONS
 		/// <returns>Module name</returns>
 		public string GetName()
@@ -55,16 +60,27 @@ namespace MAIN
 		#endregion
 	}
 
+	public class UserData
+	{
+		public string hostmask;
+		public Chatcommand cmd_scope;
+
+		public UserData(string hostmask)
+		{
+			this.hostmask = hostmask;
+			cmd_scope = null;
+		}
+	}
+
 	public class Channel
 	{
 		string m_name;
-		// <nick, hostmask> (user init!)
-		public Dictionary<string, string> nicks;
+		public Dictionary<string, UserData> users;
 
 		public Channel(string channel_name)
 		{
 			m_name = channel_name;
-			nicks = new Dictionary<string, string>();
+			users = new Dictionary<string, UserData>();
 		}
 
 		#region PUBLIC FUNCTIONS
@@ -83,10 +99,10 @@ namespace MAIN
 			return channel_name[0] != '#';
 		}
 
-		/// <returns>Hostmask of the user or null (not found)</returns>
-		public string GetHostmask(string nickname)
+		/// <returns>User class object or null (not found)</returns>
+		public UserData GetUserData(string nickname)
 		{
-			return nicks.ContainsKey(nickname) ? nicks[nickname] : null;
+			return users.ContainsKey(nickname) ? users[nickname] : null;
 		}
 
 		/// <summary>Try to find a similar nickname within the channel.</summary>
@@ -94,7 +110,7 @@ namespace MAIN
 		public string FindNickname(string nickname, bool use_levenshtein = true)
 		{
 			string nickname_l = nickname.ToLower().Trim();
-			foreach (KeyValuePair<string, string> user in nicks) {
+			foreach (var user in users) {
 				if (user.Key.ToLower() == nickname_l)
 					return user.Key;
 
@@ -219,8 +235,8 @@ namespace MAIN
 			if (channel == null)
 				return;
 
-			var nicks_copy = new List<string>(channel.nicks.Count);
-			foreach (KeyValuePair<string, string> user in channel.nicks)
+			var nicks_copy = new List<string>(channel.users.Count);
+			foreach (var user in channel.users)
 				nicks_copy.Add(user.Key);
 
 			foreach (string nick in nicks_copy)
@@ -250,7 +266,7 @@ namespace MAIN
 			if (chan == null)
 				return;
 
-			chan.nicks[nick] = hostmask;
+			chan.users[nick] = new UserData(hostmask);
 
 			foreach (Module module in m_modules)
 				module.OnUserJoin(nick);
@@ -265,14 +281,17 @@ namespace MAIN
 			foreach (Module module in m_modules)
 				module.OnUserLeave(nick);
 
-			chan.nicks.Remove(nick);
+			chan.users.Remove(nick);
 		}
 
 		public void OnUserRename(string nick, string hostmask, string old_nick)
 		{
 			foreach (Channel channel in m_channels) {
-				channel.nicks[nick] = hostmask;
-				channel.nicks.Remove(old_nick);
+				UserData user = channel.users[old_nick];
+				user.hostmask = hostmask;
+
+				channel.users[nick] = user;
+				channel.users.Remove(old_nick);
 			}
 
 			foreach (Module module in m_modules)
@@ -284,6 +303,18 @@ namespace MAIN
 		{
 			foreach (Module module in m_modules)
 				module.OnUserSay(nick, message, length, ref args);
+
+			UserData user = GetChannel().GetUserData(nick);
+			// Command shortcuts: "$uno p" becomes "$p" unless escaped using "$$"
+			if (user.cmd_scope != null && message[1] != '$') {
+				if (user.cmd_scope.Run(nick, message.Substring(1)))
+					return;
+			}
+
+			if (message[1] == '$') {
+				// Unescape
+				message = message.Substring(1);
+			}
 
 			m_chatcommands.Run(nick, message);
 		}

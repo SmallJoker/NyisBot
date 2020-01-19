@@ -14,7 +14,7 @@ namespace MAIN
 				int length, ref string[] args)
 		{
 			Channel channel = p_manager.GetChannel();
-			string hostmask = channel.GetHostmask(nick);
+			string hostmask = channel.GetUserData(nick).hostmask;
 
 			switch (args[0]) {
 			case "$join":

@@ -361,7 +361,7 @@ namespace MAIN
 
 				// Regular user leaves
 				foreach (Channel chan in manager.UnsafeGetChannels()) {
-					if (chan.GetHostmask(nick) == null)
+					if (chan.GetUserData(nick) == null)
 						continue;
 
 					manager.SetActiveChannel(chan.GetName());
@@ -479,7 +479,15 @@ namespace MAIN
 						manager.SetActiveChannel(destination);
 
 					Channel channel = manager.GetChannel();
-					channel.nicks[nick] = hostmask;
+					// Update hostmask or add user
+					{
+						UserData user = channel.GetUserData(nick);
+						if (user == null)
+							user = new UserData(hostmask);
+						else
+							user.hostmask = hostmask;
+						channel.users[nick] = user;
+					}
 
 					OnUserSay(nick, message);
 				} else { // numbers, AUTH request

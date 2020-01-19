@@ -72,16 +72,16 @@ namespace MAIN
 
 			int index = 0;
 			if (!is_private) {
-				foreach (KeyValuePair<string, string> _nick in chan.nicks) {
+				foreach (var user in chan.users) {
 					Lua.lua_pushinteger(SE.L, ++index);
 					Lua.lua_newtable(SE.L);
 
 					Lua.lua_pushstring(SE.L, "nick");
-					Lua.lua_pushstring(SE.L, _nick.Key);
+					Lua.lua_pushstring(SE.L, user.Key);
 					Lua.lua_settable(SE.L, -3);
 
 					Lua.lua_pushstring(SE.L, "hostmask");
-					Lua.lua_pushstring(SE.L, _nick.Value);
+					Lua.lua_pushstring(SE.L, user.Value.hostmask);
 					Lua.lua_settable(SE.L, -3);
 
 					Lua.lua_settable(SE.L, -3);
@@ -96,7 +96,7 @@ namespace MAIN
 			SE.SetTableField("channel", chan.GetName());
 			SE.SetTableField("nick", nick);
 			SE.SetTableField("botname", G.settings["nickname"]);
-			SE.SetTableField("hostmask", chan.nicks[nick]);
+			SE.SetTableField("hostmask", chan.GetUserData(nick).hostmask);
 			SE.SetTableField("isprivate", is_private);
 			SE.SetTableField("online", index);
 			SE.SetTableField("owner_hostmask", G.settings["owner_hostmask"]);
