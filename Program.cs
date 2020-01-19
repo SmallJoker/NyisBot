@@ -182,7 +182,7 @@ namespace MAIN
 
 		void OnUserSay(string nick, string message)
 		{
-			if (message.Length < 4)
+			if (message.Length < 2)
 				return;
 
 			#region CTCP

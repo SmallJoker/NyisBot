@@ -216,25 +216,43 @@ List of additional modules:
  Other commands
 ================
 These commands do not depend on any Lua skills and can be used like any other regular bot command.
+Note: Commands like "$uno p y 4" can be abbreviated to "$p y 4" until you leave the game.
 
 $c <text>
 	^ Colorizes the text
 
 $help
-	^ Returns the available commands of the bot (not informative!)
-
-$info
-	^ Outputs information about the bot
-
-$next
-	^ Another satisfied customer. Next!
+	^ Returns the available commands of the bot (only partially helpful)
 
 $tell <nick> <text>
 	^ Tells the nick your text when (s)he joins a channel where the bot is present
 	^ Detection sensivity: Nicknames can have 1 typo per 4 characters in the name
 
+$join <channel>
+$part <channel>
+	^ Bot admin commands. Change config file to make this persistent.
 
- The cheat game
+
+ Superior UNO Game
+===================
+Q: Why superior?
+A: Because it offers more than UNOBot
+
+$uno join <mode>
+	^ mode: optional, hexadecimal value of UNO modes to set (m_SuperiorUno.cs)
+
+$uno leave
+$uno deal
+
+$uno p <color> <face>
+	^ color: r, g, b, y
+	^ face: 0 .. 9, S, R, W or WD4
+
+$uno d
+	^ Draw one card or the "draw count" based on played D2 and WD4 cards
+
+
+ The Cheat Game
 ================
 This game is a turn-based cards game all about lying and and tricking your opponents.
 
@@ -297,7 +315,7 @@ The first player starts with an empty stack, thus they may start a new one:
 ----------------------
 Somewhen there are 7 cards on the stack and everybody says they're a king card.
 This is the point where they might start to lie. If you don't believe the previous player, simply use
-> $lcheck
+> $lgame check
 ..and the last placed card(s) will be checked whether they are correct main cards or not.
 
 If they're actually correct, you get the complete stack and the next player can start a new stack.

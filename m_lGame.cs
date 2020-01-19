@@ -190,7 +190,7 @@ namespace MAIN
 			int count = game.players.Count;
 			string text = "Player " + nick + " joined the game. Total " + count + " players ready.";
 			if (count > 2)
-				text += " If you want to start the game, use \"$lstart\"";
+				text += " If you want to start the game, use \"$start\"";
 			else if (count == 1)
 				text += " At least 3 players are required to start the game.";
 			channel.Say(text);
