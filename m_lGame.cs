@@ -20,6 +20,7 @@ namespace MAIN
 
 		~LGPlayer()
 		{
+			//Console.WriteLine("~LGPlayer " + nick);
 			m_user.cmd_scope = null;
 		}
 	}
@@ -83,6 +84,7 @@ namespace MAIN
 				return false;
 
 			players.RemoveAt(index);
+			GC.Collect();
 
 			if (index <= current_player) {
 				if (current_player == 0)
@@ -146,8 +148,9 @@ namespace MAIN
 
 			if (game.players.Count < 3 && game.is_active) {
 				lchans.Remove(game);
-				channel.Say("Game ended.");
+				game = null;
 				GC.Collect();
+				channel.Say("Game ended.");
 				return;
 			}
 			if (game.is_active) {
@@ -158,6 +161,7 @@ namespace MAIN
 
 			if (game.players.Count == 0) {
 				lchans.Remove(game);
+				game = null;
 				GC.Collect(); // Force calling LGPlayer::~LGPlayer
 			}
 		}

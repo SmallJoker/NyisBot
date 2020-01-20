@@ -182,9 +182,6 @@ namespace MAIN
 
 		void OnUserSay(string nick, string message)
 		{
-			if (message.Length < 2)
-				return;
-
 			#region CTCP
 			string message_l = message.ToLower();
 			if (message_l == "\x01version\x01") {
@@ -249,7 +246,7 @@ namespace MAIN
 				return;
 			}
 
-			if (message.Length < 4 || message[0] != '$')
+			if (message.Length < 2 || message[0] != '$')
 				return;
 
 			manager.OnUserSay(nick, message, length, ref args);

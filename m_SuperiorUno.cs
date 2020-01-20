@@ -37,6 +37,7 @@ namespace MAIN
 
 		~UnoPlayer()
 		{
+			//Console.WriteLine("~UnoPlayer " + name);
 			m_user.cmd_scope = null;
 		}
 
@@ -114,10 +115,7 @@ namespace MAIN
 		public void TurnNext()
 		{
 			int index = players.FindIndex(item => item.name == current_player);
-			index++; // Also: Error -1 -> 0
-
-			if (index >= players.Count)
-				index = 0;
+			index = ++index % players.Count; // Also: Error -1 -> 0
 
 			current_player = players[index].name;
 		}
@@ -131,7 +129,7 @@ namespace MAIN
 			if (current_player == player.name)
 				TurnNext();
 
-			if (is_active) {
+			if (is_active && player.cards.Count == 0) {
 				int score = 0;
 				foreach (UnoPlayer up in players) {
 					if (up != player)
@@ -142,7 +140,10 @@ namespace MAIN
 			} else {
 				channel.Say(player.name + " left this UNO game.");
 			}
+
 			players.Remove(player);
+			player = null; // So that GC works
+			GC.Collect();
 			return true;
 		}
 	}
@@ -165,7 +166,7 @@ namespace MAIN
 			cmd.SetMain(delegate (string nick, string message) {
 				var channel = p_manager.GetChannel();
 				channel.Say(nick + ": Available subcommands: " + cmd.CommandsToString() +
-					". Please check the source code until there's a tutorial.");
+					". See HELP.txt for a game explanation.");
 			});
 
 			cmd.Add("join", Cmd_Join);
@@ -206,7 +207,6 @@ namespace MAIN
 				if (nick == old_player)
 					TellGameStatus(channel);
 			}
-			GC.Collect(); // Force calling UnoPlayer::~UnoPlayer
 		}
 
 		void Cmd_Join(string nick, string message)
@@ -383,8 +383,8 @@ namespace MAIN
 
 			uno.TurnNext();
 
-			// Player won. At this point uno.current_player != player.name
-			if (player.cards.Count == 0)
+			// Player won, except when it's again their turn (last card = skip)
+			if (player.cards.Count == 0 && uno.current_player != player.name)
 				uno.RemovePlayer(channel, player.name);
 
 			if (CheckGameEndDelete(channel.GetName()))
@@ -445,16 +445,17 @@ namespace MAIN
 			if (uno == null)
 				return;
 
+			UnoPlayer player = uno.GetPlayer();
+
 			var sb = new System.Text.StringBuilder();
 			sb.Append("[UNO] " + uno.current_player);
-			sb.Append(" (" + uno.GetPlayer().cards.Count + " cards) - ");
+			sb.Append(" (" + player.cards.Count + " cards) - ");
 			sb.Append("Top card: " + FormatCards(new List<Card> { uno.top_card }));
 			if (uno.draw_count > 0)
 				sb.Append("- draw count: " + uno.draw_count);
 
 			channel.Say(sb.ToString());
 
-			var player = uno.GetPlayer();
 			E.Notice(player.name, "Your cards: " + FormatCards(player.cards));
 		}
 
@@ -469,7 +470,10 @@ namespace MAIN
 
 			if (uno.is_active)
 				E.Say(channel, "[UNO] Game ended");
+
 			m_channels.Remove(channel);
+			uno = null; // So that GC works
+			GC.Collect();
 			return true;
 		}
 	}
