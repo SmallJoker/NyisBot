@@ -147,88 +147,11 @@ local function register_api(tablename, filename)
 	})
 end
 
-register_api("quotes",  "quotes.lua")
-register_api("noobgen", "noobgen.lua")
 register_api("karma",   "karma.lua")
+register_api("morse",   "morse.lua")
+register_api("noobgen", "noobgen.lua")
+register_api("quotes",  "quotes.lua")
 
-
---{ FUNCTION LINK()
-local link_list = {
-	applause	= "*CLAP* *CLAP* *CLAP* http://i.imgur.com/YiUe1r6.gif",
-	bugs		= "Bugs everywhere <.< http://d2ykiwzv4lwge4.cloudfront.net/wp-content/uploads/2014/08/31.jpg",
-	busy		= "Don't interrupt me! http://i2.kym-cdn.com/photos/images/original/000/390/314/f56.gif",
-	color		= "\x02\x1f\x1d\x037,5 COLOR MADNESS",
-	dj			= "Every 15 minutes there are random giveaways to the people in"..
-					" #dontjoinitsatrap ! (You can join it by clicking on the channel name)",
-	dramatic	= "Dramatic situation! https://www.youtube.com/watch?v=y8Kyi0WNg40",
-	epicfail	= "Do not prepare $lcheck -> https://pastebin.com/raw/piBH75rp",
-	high5		= "High five! https://i.imgur.com/M0bWify.gif",
-	panda		= "Never say no to panda. https://www.youtube.com/watch?v=X21mJh6j9i4",
-	["quick-look"]	= "Let's take a quick look. http://i.imgur.com/JRcwAWP.gif",
-	["rizon-prizes"]= "Rizon offers many cool prizes you can win with some luck. Get the complete list with the command "..
-					c("/msg GOD XDCC list").." and try your luck!",
-	repost		= "REPOST ALERT! http://i.imgur.com/FHJc4aP.gif",
-	slash		= "How to use slash: http://users.kymp.net/feuer/etcomic/013.jpg",
-	stfu		= "http://i2.kym-cdn.com/photos/images/facebook/000/919/578/c2f.jpg",
-	["tl;dr"]	= "Too long; didn't read that. http://i.imgur.com/EtYq65v.gif",
-	typing		= "See me writing da wordz! http://replygif.net/i/937.gif",
-	upvote		= "Thumbs up! http://i.imgur.com/SlUuuHP.gif",
-	wdtam		= "LGTM, C DIS 2: http://users.kymp.net/feuer/etcomic/050.jpg",
-
-	["help.api"]	= "Complete Lua plugin source: https://github.com/SmallJoker/NyisBot",
-	["help.ask"]	= "How to ask questions correctly: http://rurounijones.github.io/blog/2009/03/17/how-to-ask-for-help-on-irc/",
-	["help.irc"]	= "A short IRC command tutorial: http://pastebin.com/raw/MB50gxk6",
-	["help.luacmd"]	= "Tutorial and function reference for this IRC bot: "
-				.. "https://github.com/SmallJoker/NyisBot/blob/master/plugins/PLUGIN_API.txt",
-	["help.memo"]	= "Use "..c("/msg MemoServ SEND <user> <text>").." to send your message to <user>.",
-	["help.nick"]	= "Take a moment to read this tutorial: http://pastebin.com/raw/iHMFEq41",
-	["help.treeserv"]	= "List of commands: http://apeiron.no-ip.org:6112/treeserv.php?what=commands",
-
-	["bot.invite"]	= "To invite this bot into your channel, use the chat command "..c("/invite " .. L.botname .. " #channel")
-}
-
-local link_list_keys = {}
-for n in pairs(link_list) do
-	table.insert(link_list_keys, n)
-end
-table.sort(link_list_keys)
-
-function link(text)
-	if not text then
-		text = "list"
-	elseif type(text) ~= "string" then
-		text = tostring(text)
-	end
-
-	text = string.lower(text)
-	if text == "list" then
-		local text = table.concat(link_list_keys, " ")
-		print(L.nick ..": ".. text)
-		return
-	end
-
-	if not link_list[text] then
-		local sensivity = string.len(text) / 3
-		for k,v in pairs(link_list) do
-			if stringldistance(k, text) <= sensivity then
-				text = k
-				break
-			end
-		end
-	end
-
-	local entry = link_list[text]
-	if not entry then
-		print(L.nick ..": Link keyword not found.")
-		return
-	end
-	if type(entry) == "function" then
-		entry() -- Reference to another function
-	else
-		print(entry)
-	end
-end
---} FUNCTION LINK()
 
 function sell(text)
 	assert(type(text) == "string", "Argument #1: String expected.")
