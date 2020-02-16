@@ -30,9 +30,9 @@ namespace MAIN
 		public string name;
 		public bool is_active;
 		public string main_card;
-		public int current_player;
 		public List<string> stack_all, stack_top;
 		public List<LGPlayer> players;
+		private int current_player;
 
 		public LGameChannel(string channel_name)
 		{
@@ -50,29 +50,22 @@ namespace MAIN
 			stack_top = new List<string>();
 		}
 
-		public LGPlayer GetPlayer()
-		{
-			return players[current_player];
-		}
-
 		public LGPlayer GetPlayer(string nickname)
 		{
 			return players.Find(item => item.nick == nickname);
 		}
 
-		public LGPlayer GetPlayer(int offset)
+		public LGPlayer GetPlayer(int offset = 0)
 		{
 			int count = players.Count;
-			if (offset < 0)
-				offset += count;
-			else if (offset >= count)
-				offset -= count;
-			return players[offset];
+			offset += current_player + count;
+			return players[offset % count];
 		}
 
 		public LGPlayer NextPlayer()
 		{
-			current_player = ++current_player % players.Count;
+			++current_player;
+			current_player %= players.Count;
 			return players[current_player];
 		}
 
@@ -256,7 +249,7 @@ namespace MAIN
 			}
 			game.CleanStack();
 
-			channel.Say("Game started! Player " + game.players[0].nick +
+			channel.Say("Game started! Player " + game.GetPlayer().nick +
 				" can play the first card using \"$add <'main card'> <card nr.> [<card nr.> [<card nr.>]]\"" +
 				" (Card nr. from your hand)");
 
@@ -414,6 +407,7 @@ namespace MAIN
 			}
 			#endregion
 
+			player = null;
 			string main_card = game.main_card;
 			bool contains_invalid = game.stack_top.FindIndex(item => item != main_card) >= 0;
 
@@ -423,7 +417,7 @@ namespace MAIN
 			} else {
 				card_msg = "The top cards were correct! ";
 
-				player = game.NextPlayer();
+				game.NextPlayer();
 			}
 
 			card_msg += "(" + FormatCards(game.stack_top) + ") ";

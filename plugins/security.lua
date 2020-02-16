@@ -156,11 +156,20 @@ register_api("quotes",  "quotes.lua")
 function sell(text)
 	assert(type(text) == "string", "Argument #1: String expected.")
 
-	if math.random() < 0.167 then
-		print(text.." was thrown into the \x034fire\x0F. \x033Please wait...")
-		return
+	local n = math.random() * 100
+	if n > 22 then
+		print("Sold " .. text .. " for \x033$".. math.ceil(math.random() * 100) * 10)
+	elseif n > 18 then
+		print("\x032FBI open up!\x0F " .. L.nick .. " tried to sell the illegal " .. text)
+	elseif n > 12 then
+		print(text .. " cannot be sold. " .. L.nick .. " lost \x034$" ..
+			math.ceil(math.random() * 20) * 5 .. "\x0F to this nonsense effort.")
+	elseif n > 6 then
+		print(text .. " caused an exception in the matrix. Trynfiw ts94 s:fe sa " ..
+			"*BEEEEP* Segmentation fault (Core dumped)")
+	else
+		print(text .. " was thrown into the \x034fire\x0F. \x033Please wait...")
 	end
-	print("Sold "..text.." for \x033$"..(math.ceil(math.random() * 100) * 10))
 end
 
 -- Russian roulette. Have fun.
