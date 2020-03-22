@@ -78,7 +78,9 @@ namespace MAIN
 
 		public void SortCards()
 		{
-			cards.Sort((a, b) => b.Key.CompareTo(a.Key));
+			// Sort cards by face, then by value
+			// Is horrible, but where's my std::stable_sort()?
+			cards.Sort((a, b) => ((int)b.Key + b.Value).CompareTo((int)a.Key + a.Value));
 		}
 	}
 
