@@ -9,6 +9,7 @@ namespace MAIN
 	{
 		STACK_D2 = 0x01, // Stack "draw +2" cards
 		STACK_WD4 = 0x02, // Stack "wild draw +4" cards
+		UPGRADE = 0x04, // Place "wild draw +4" onto "draw +2"
 		MULTIPLE = 0x08, // Place same cards (TODO)
 		LIGRETTO = 0x80, // Smash in cards whenever you have a matching one
 	}
@@ -245,9 +246,16 @@ namespace MAIN
 			uno.players.Add(new UnoPlayer(nick, user));
 			uno.current_player = nick;
 
+			// Human readable modes
+			var modes_list = new List<string>();
+			for (int i = 1; i < byte.MaxValue; i <<= 1) {
+				if ((uno.modes & i) > 0)
+					modes_list.Add(FormatMode((UnoMode)(uno.modes & i)));
+			}
+
 			channel.Say("[UNO] " + uno.players.Count +
 				" player(s) are waiting for a new UNO game. " +
-				string.Format("Modes: 0x{0:X2}", uno.modes));
+				string.Format("Modes: [0x{0:X2}] ", uno.modes) + string.Join(", ", modes_list));
 		}
 
 		void Cmd_Leave(string nick, string message)
@@ -369,8 +377,12 @@ namespace MAIN
 				if (put_face == "D2" && uno.CheckMode(UnoMode.STACK_D2))
 					ok = true;
 				else if (put_face == "WD4" &&
-				         put_face == uno.top_card.Value &&
-				         uno.CheckMode(UnoMode.STACK_WD4))
+						 put_face == uno.top_card.Value &&
+						 uno.CheckMode(UnoMode.STACK_WD4))
+					ok = true;
+				else if (put_face == "WD4" &&
+						uno.top_card.Value == "D2" &&
+						uno.CheckMode(UnoMode.UPGRADE))
 					ok = true;
 
 				if (!ok) {
@@ -454,6 +466,18 @@ namespace MAIN
 			sb.Append((char)0x0F); // Normal text
 			sb.Append(" ");
 			return sb.ToString();
+		}
+
+		string FormatMode(UnoMode mode)
+		{
+			switch (mode) {
+			case UnoMode.STACK_D2:  return "Stack D2";
+			case UnoMode.STACK_WD4: return "Stack WD4";
+			case UnoMode.UPGRADE:   return "Upgrade D2 -> WD4";
+			case UnoMode.MULTIPLE:  return "[TODO]";
+			case UnoMode.LIGRETTO:  return "Ligretto";
+			default: return "[N/A]";
+			}
 		}
 
 		void TellGameStatus(Channel channel, UnoPlayer player = null)
