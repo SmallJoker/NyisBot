@@ -244,6 +244,9 @@ $uno join <mode>
 $uno leave
 $uno deal
 
+$uno top
+	^ Outputs the last played cards and your cards.
+
 $uno p <color> <face>
 	^ color: r, g, b, y
 	^ face: 0 .. 9, S, R, W or WD4

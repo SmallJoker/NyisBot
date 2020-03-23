@@ -174,6 +174,7 @@ namespace MAIN
 			cmd.Add("join", Cmd_Join);
 			cmd.Add("leave", Cmd_Leave);
 			cmd.Add("deal", Cmd_Deal);
+			cmd.Add("top", Cmd_Top);
 			cmd.Add("p", Cmd_Put);
 			cmd.Add("d", Cmd_Draw);
 		}
@@ -285,6 +286,20 @@ namespace MAIN
 			uno.top_card = nplayer.cards[0];
 			uno.is_active = true;
 			TellGameStatus(channel);
+		}
+
+		void Cmd_Top(string nick, string message)
+		{
+			Channel channel = p_manager.GetChannel();
+			UnoChannel uno = GetUnoChannel(channel.GetName());
+			UnoPlayer player = uno != null ? uno.GetPlayer(nick) : null;
+
+			if (player == null || !uno.is_active) {
+				E.Notice(nick, "You are not part of an UNO game.");
+				return;
+			}
+
+			TellGameStatus(channel, player);
 		}
 
 		void Cmd_Put(string nick, string message)
@@ -441,13 +456,15 @@ namespace MAIN
 			return sb.ToString();
 		}
 
-		void TellGameStatus(Channel channel)
+		void TellGameStatus(Channel channel, UnoPlayer player = null)
 		{
 			UnoChannel uno = GetUnoChannel(channel.GetName());
 			if (uno == null)
 				return;
 
-			UnoPlayer player = uno.GetPlayer();
+			// No specific player. Take current one
+			if (player == null)
+				player = uno.GetPlayer();
 
 			var sb = new System.Text.StringBuilder();
 			sb.Append("[UNO] " + uno.current_player);
