@@ -470,23 +470,29 @@ namespace MAIN
 
 		string FormatCards(List<string> cards, bool number = false)
 		{
+			// number = true: Append index of the card
+			// number = false: Non-colorized cards list
 			System.Text.StringBuilder sb = new System.Text.StringBuilder();
 			int i = 1;
 			foreach (string card in cards) {
 				if (i > 1)
 					sb.Append(' ');
+
 				if (number) {
 					sb.Append(i);
-					sb.Append((char)3);
+					sb.Append((char)0x03); // Color
 					if (card == "Q")
 						sb.Append("04");
 					else
 						sb.Append("12");
 				}
 
+				sb.Append((char)0x02); // Bold start
 				sb.Append('[' + card + ']');
 				if (number)
-					sb.Append((char)15);
+					sb.Append((char)0x0F); // Normal text
+				else
+					sb.Append((char)0x02); // Bold end
 				i++;
 			}
 			return sb.ToString();

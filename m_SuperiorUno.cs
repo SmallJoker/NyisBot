@@ -233,7 +233,7 @@ namespace MAIN
 			if (uno == null) {
 				string modes_s = Chatcommand.GetNext(ref message);
 
-				byte modes = 0x03;
+				byte modes = 0x07;
 				try {
 					modes = Convert.ToByte(modes_s, 16);
 				} catch { }
@@ -289,7 +289,7 @@ namespace MAIN
 			}
 
 			foreach (UnoPlayer player in uno.players)
-				player.DrawCards(9);
+				player.DrawCards(11);
 
 			uno.top_card = nplayer.cards[0];
 			uno.is_active = true;
