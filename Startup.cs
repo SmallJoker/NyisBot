@@ -16,7 +16,7 @@ namespace MAIN
 		static EventHandler _handler;
 #endif
 
-		public static Dictionary<string, string> settings;
+		public static Settings settings;
 
 		static void Main(string[] args)
 		{
@@ -25,9 +25,10 @@ namespace MAIN
 				return;
 			}
 
-			settings = new Dictionary<string, string>();
-			ReadConfig("config.example.txt");
-			ReadConfig("config.txt");
+			Settings defaults = new Settings("config.example.txt");
+			settings = new Settings("config.txt", defaults);
+			defaults.SyncFileContents();
+			settings.SyncFileContents();
 
 			E e = new E();
 
@@ -66,65 +67,6 @@ namespace MAIN
 
 				Thread.Sleep(200);
 			}
-		}
-
-		static void ReadConfig(string file)
-		{
-			if (!System.IO.File.Exists(file)) {
-				Console.WriteLine("[ERROR] File '{0}' not found", file);
-				return;
-			}
-
-			string text = System.IO.File.ReadAllText(file);
-			bool read_key = true; // false = value
-			bool snap = false;
-			bool is_comment = false;
-			int start_pos = 0;
-			string key = "";
-
-			for (int i = 0; i < text.Length; i++) {
-				char cur = text[i];
-				bool is_valid = false;
-
-				if (read_key)
-					is_valid = cur > ' ' && cur != '=';
-				else
-					is_valid = cur > ' ' || (cur == ' ' && snap);
-
-				// Ignore comments
-				if (i + 1 < text.Length && cur == '/' && text[i + 1] == '*') {
-					is_comment = true;
-					continue;
-				}
-
-				if (is_comment) {
-					if (cur == '/' && text[i - 1] == '*')
-						is_comment = false;
-					continue;
-				}
-
-				if (!snap && is_valid) {
-					// Begin reading
-					start_pos = i;
-					snap = true;
-				}
-				if (snap && !is_valid) {
-					// Stop reading
-					string val = text.Substring(start_pos, i - start_pos);
-
-					if (read_key)
-						key = val;
-					else
-						settings[key] = (val == ".") ? "" : val;
-
-					read_key = true;
-					snap = false;
-				}
-				if (read_key && cur == '=')
-					read_key = false;
-			}
-			if (!read_key)
-				settings[key] = text.Substring(start_pos, text.Length - start_pos);
 		}
 	}
 }

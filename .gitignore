@@ -2,6 +2,7 @@
 
 bin/
 obj/
+.vs/
 
 # Ignore local data
 
