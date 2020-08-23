@@ -11,7 +11,8 @@ namespace MAIN
 		STACK_WD4 = 0x02, // Stack "wild draw +4" cards
 		UPGRADE = 0x04, // Place "wild draw +4" onto "draw +2"
 		MULTIPLE = 0x08, // Place same cards (TODO)
-		LIGRETTO = 0x80, // Smash in cards whenever you have a matching one
+		LIGRETTO = 0x40, // Smash in cards whenever you have a matching one
+		RANKED = 0x80, // Ranked game, requires auth to join
 	}
 
 	enum CardColor
@@ -158,7 +159,6 @@ namespace MAIN
 
 		Dictionary<string, UnoChannel> m_channels;
 		Chatcommand m_subcommand;
-
 
 		public m_SuperiorUno(Manager manager) : base("SuperiorUno", manager)
 		{
@@ -331,6 +331,12 @@ namespace MAIN
 			CardColor put_color = CardColor.NONE;
 			string put_face = Chatcommand.GetNext(ref message).ToUpper();
 
+			if (put_color_s.Length >= 2) {
+				// The following format: "gwd4", "g4"
+				put_face = put_color_s.Substring(1);
+				put_color_s = put_color_s.Remove(1);
+			}
+
 			// Convert user input to internal format
 			switch (put_color_s) {
 			case "b": put_color = CardColor.BLUE; break;
@@ -347,7 +353,7 @@ namespace MAIN
 			if (!change_face && put_color == CardColor.NONE ||
 					!card_faces.Contains(put_face)) {
 
-				E.Notice(nick, "Invalid input. Syntax: $uno p <color> <face>.");
+				E.Notice(nick, "Invalid input. Syntax: $uno p <color> <face>, $p <color><face>.");
 				return;
 			}
 
@@ -406,7 +412,12 @@ namespace MAIN
 				uno.draw_count += 4;
 				pending_autodraw = !uno.CheckMode(UnoMode.STACK_WD4);
 				break;
-			case "R": uno.players.Reverse(); break;
+			case "R":
+				if (uno.players.Count > 2)
+					uno.players.Reverse();
+				else
+					uno.TurnNext(); // Acts as Skip for 2 players
+				break;
 			case "S": uno.TurnNext(); break;
 			}
 
