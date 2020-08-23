@@ -89,7 +89,7 @@ namespace MAIN
 		#endregion
 
 		#region RANKING
-		const int GAIN_FACTOR = 40;
+		const int GAIN_FACTOR = 30;
 		int m_wins, m_losses, m_streak;
 		int m_elo = 1000;
 		int m_delta;
@@ -147,8 +147,8 @@ namespace MAIN
 		public string ShowElo(bool full)
 		{
 			if (full) {
-				return m_elo + " Elo, " + m_wins + "Wins / " +
-					m_losses + " Losses "+ ", Streak " + m_streak;
+				return m_elo + " Elo, " + m_wins + " Wins / " +
+					m_losses + " Losses, Streak " + m_streak;
 			}
 			string val = m_elo.ToString();
 			string inside = "";
@@ -346,7 +346,7 @@ namespace MAIN
 			if (uno == null) {
 				string modes_s = Chatcommand.GetNext(ref message);
 
-				byte modes = 0x07;
+				byte modes = 0x87;
 				try {
 					modes = Convert.ToByte(modes_s, 16);
 				} catch { }
@@ -474,7 +474,7 @@ namespace MAIN
 				// Convert/validate W and WD4
 				change_face = true;
 			}
-			if (!change_face && put_color == CardColor.NONE ||
+			if (put_color == CardColor.NONE ||
 					!card_faces.Contains(put_face)) {
 
 				E.Notice(nick, "Invalid input. Syntax: $uno p <color> <face>, $p <color><face>.");
@@ -483,8 +483,8 @@ namespace MAIN
 
 			// Check whether color of face matches
 			if (put_color != uno.top_card.Key &&
-			    put_face != uno.top_card.Value &&
-			    !change_face) {
+					put_face != uno.top_card.Value &&
+					!change_face) {
 
 				E.Notice(nick, "This card cannot be played. Please check color and face.");
 				return;
