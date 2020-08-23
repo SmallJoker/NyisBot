@@ -254,6 +254,9 @@ $uno p <color> <face>
 $uno d
 	^ Draw one card or the "draw count" based on played D2 and WD4 cards
 
+$uno elo <nick>
+	^ Outputs the ranking of a specific player
+
 
  The Cheat Game
 ================

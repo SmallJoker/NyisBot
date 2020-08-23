@@ -89,7 +89,7 @@ namespace MAIN
 		#endregion
 
 		#region RANKING
-		const int GAIN_FACTOR = 30;
+		const int GAIN_FACTOR = 40;
 		int m_wins, m_losses, m_streak;
 		int m_elo = 1000;
 		int m_delta;
@@ -120,28 +120,28 @@ namespace MAIN
 			}
 			int elo_all = elo_losers + m_elo;
 
-			double delta = (double)elo_losers / elo_all * GAIN_FACTOR + 0.5;
-			m_delta += (int)delta;
+			// Handle winner
+			{
+				double delta = (double)elo_losers / elo_all * GAIN_FACTOR + 0.5;
+				m_delta += (int)delta;
 
-			m_elo += (int)delta;
-			m_streak++;
-			m_wins++;
-		}
-
-		public void Lose(List<UnoPlayer> players)
-		{
-			int elo_all = m_elo;
-			foreach (UnoPlayer p in players) {
-				if (p != this)
-					elo_all += p.m_elo;
+				m_elo += (int)delta;
+				m_streak++;
+				m_wins++;
 			}
 
-			double delta = (double)m_elo / elo_all * -GAIN_FACTOR + 0.5;
-			m_delta += (int)delta;
+			// Handle losers
+			foreach (UnoPlayer p in players) {
+				if (p == this)
+					continue;
 
-			m_elo += (int)delta;
-			m_streak = 0;
-			m_losses++;
+				double delta = (double)p.m_elo / elo_all * -GAIN_FACTOR + 0.5;
+				p.m_delta += (int)delta;
+
+				p.m_elo += (int)delta;
+				p.m_streak = 0;
+				p.m_losses++;
+			}
 		}
 
 		public string ShowElo(bool full)
@@ -225,13 +225,10 @@ namespace MAIN
 				string log = player.name + " finishes the game and gains "
 					+ score + " points";
 				if (CheckMode(UnoMode.RANKED)) {
-					foreach (UnoPlayer up in players) {
-						if (up == player)
-							up.Win(players);
-						else
-							up.Lose(players);
+					player.Win(players);
+					foreach (UnoPlayer up in players)
 						m_settings.Set(up.name, up);
-					}
+
 					log += ". Elo: " + player.ShowElo(false);
 				}
 				channel.Say(log);
