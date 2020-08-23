@@ -24,7 +24,7 @@ namespace MAIN
 		NONE = IRC_Color.BLACK
 	}
 
-	class UnoPlayer
+	class UnoPlayer : SettingType
 	{
 		public string name;
 		public List<Card> cards;
@@ -40,9 +40,11 @@ namespace MAIN
 		~UnoPlayer()
 		{
 			//Console.WriteLine("~UnoPlayer " + name);
-			m_user.cmd_scope = null;
+			if (m_user != null)
+				m_user.cmd_scope = null;
 		}
 
+		#region INGAME
 		public List<Card> DrawCards(int count)
 		{
 			var drawn = new List<Card>();
@@ -84,6 +86,84 @@ namespace MAIN
 			// Is horrible, but where's my std::stable_sort()?
 			cards.Sort((a, b) => ((int)b.Key + b.Value).CompareTo((int)a.Key + a.Value));
 		}
+		#endregion
+
+		#region RANKING
+		const int GAIN_FACTOR = 30;
+		int m_wins, m_losses, m_streak;
+		int m_elo = 1000;
+		int m_delta;
+
+		public override bool DeSerialize(string str)
+		{
+			string[] parts = str.Split(' ');
+			if (parts.Length < 4)
+				return false;
+
+			return int.TryParse(parts[0], out m_wins)
+				&& int.TryParse(parts[1], out m_losses)
+				&& int.TryParse(parts[2], out m_elo)
+				&& int.TryParse(parts[3], out m_streak);
+		}
+
+		public override string Serialize()
+		{
+			return m_wins + " " + m_losses + " " + m_elo + " " + m_streak;
+		}
+
+		public void Win(List<UnoPlayer> players)
+		{
+			int elo_losers = 0;
+			foreach (UnoPlayer p in players) {
+				if (p != this)
+					elo_losers += p.m_elo;
+			}
+			int elo_all = elo_losers + m_elo;
+
+			double delta = (double)elo_losers / elo_all * GAIN_FACTOR + 0.5;
+			m_delta += (int)delta;
+
+			m_elo += (int)delta;
+			m_streak++;
+			m_wins++;
+		}
+
+		public void Lose(List<UnoPlayer> players)
+		{
+			int elo_all = m_elo;
+			foreach (UnoPlayer p in players) {
+				if (p != this)
+					elo_all += p.m_elo;
+			}
+
+			double delta = (double)m_elo / elo_all * -GAIN_FACTOR + 0.5;
+			m_delta += (int)delta;
+
+			m_elo += (int)delta;
+			m_streak = 0;
+			m_losses++;
+		}
+
+		public string ShowElo(bool full)
+		{
+			if (full) {
+				return m_elo + " Elo, " + m_wins + "Wins / " +
+					m_losses + " Losses "+ ", Streak " + m_streak;
+			}
+			string val = m_elo.ToString();
+			string inside = "";
+			if (m_delta != 0)
+				inside = m_delta.ToString("+0;-#");
+			if (m_streak > 1) {
+				if (inside.Length > 0)
+					inside += ", ";
+				inside += "Streak " + m_streak;
+			}
+			if (inside.Length > 0)
+				return val + " (" + inside + ")";
+			return val;
+		}
+		#endregion
 	}
 
 	class UnoChannel
@@ -94,11 +174,13 @@ namespace MAIN
 		public Card top_card;
 		public int draw_count;
 		public byte modes { get; private set; }
+		Settings m_settings;
 
-		public UnoChannel(byte modes)
+		public UnoChannel(byte modes, Settings settings)
 		{
 			players = new List<UnoPlayer>();
 			this.modes = modes;
+			m_settings = settings;
 		}
 
 		public bool CheckMode(UnoMode mode)
@@ -140,7 +222,19 @@ namespace MAIN
 						score += up.GetCardsValue();
 				}
 
-				channel.Say(player.name + " finishes the game and gains " + score + " points");
+				string log = player.name + " finishes the game and gains "
+					+ score + " points";
+				if (CheckMode(UnoMode.RANKED)) {
+					foreach (UnoPlayer up in players) {
+						if (up == player)
+							up.Win(players);
+						else
+							up.Lose(players);
+						m_settings.Set(up.name, up);
+					}
+					log += ". Elo: " + player.ShowElo(false);
+				}
+				channel.Say(log);
 			} else {
 				channel.Say(player.name + " left this UNO game.");
 			}
@@ -159,6 +253,7 @@ namespace MAIN
 
 		Dictionary<string, UnoChannel> m_channels;
 		Chatcommand m_subcommand;
+		Settings m_settings;
 
 		public m_SuperiorUno(Manager manager) : base("SuperiorUno", manager)
 		{
@@ -172,12 +267,19 @@ namespace MAIN
 					". See HELP.txt for a game explanation.");
 			});
 
+			cmd.Add("elo", Cmd_Elo);
 			cmd.Add("join", Cmd_Join);
 			cmd.Add("leave", Cmd_Leave);
 			cmd.Add("deal", Cmd_Deal);
 			cmd.Add("top", Cmd_Top);
 			cmd.Add("p", Cmd_Put);
 			cmd.Add("d", Cmd_Draw);
+
+			var f = System.IO.File.Open("uno_stats.txt", System.IO.FileMode.OpenOrCreate);
+			f.Close();
+			// Per-server settings prefix
+			m_settings = new Settings("uno_stats.txt", null, manager.GetName());
+			m_settings.SyncFileContents();
 		}
 
 		public override void CleanStage()
@@ -213,6 +315,20 @@ namespace MAIN
 			}
 		}
 
+		void Cmd_Elo(string nick, string message)
+		{
+			Channel channel = p_manager.GetChannel();
+			string who = Chatcommand.GetNext(ref message);
+			if (who.Length == 0)
+				who = nick;
+
+			var player = new UnoPlayer(who, null);
+			if (!m_settings.Get(who, ref player))
+				channel.Say("[UNO] " + who + ": No information available");
+			else
+				channel.Say("[UNO] " + who + ": " + player.ShowElo(true));
+		}
+
 		void Cmd_Join(string nick, string message)
 		{
 			Channel channel = p_manager.GetChannel();
@@ -237,13 +353,24 @@ namespace MAIN
 				try {
 					modes = Convert.ToByte(modes_s, 16);
 				} catch { }
-				uno = new UnoChannel(modes);
-				m_channels[channel.GetName()] = uno;
+				uno = new UnoChannel(modes, m_settings);
 			}
+
+			if (uno.CheckMode(UnoMode.RANKED) &&
+					p_manager.GetUserStatus(nick) != 3) {
+				E.Notice(nick, "You must be logged in to play ranked UNO.");
+				return;
+			}
+
+			m_channels[channel.GetName()] = uno; // For new channels
 
 			UserData user = channel.GetUserData(nick);
 			user.cmd_scope = m_subcommand;
-			uno.players.Add(new UnoPlayer(nick, user));
+
+			var player = new UnoPlayer(nick, user);
+			m_settings.Get(nick, ref player);
+			uno.players.Add(player);
+
 			uno.current_player = nick;
 
 			// Human readable modes
@@ -327,7 +454,7 @@ namespace MAIN
 			}
 			uno.current_player = nick; // UnoMode.LIGRETTO
 
-			string put_color_s = Chatcommand.GetNext(ref message).ToLower();
+			string put_color_s = Chatcommand.GetNext(ref message).ToUpper();
 			CardColor put_color = CardColor.NONE;
 			string put_face = Chatcommand.GetNext(ref message).ToUpper();
 
@@ -339,10 +466,10 @@ namespace MAIN
 
 			// Convert user input to internal format
 			switch (put_color_s) {
-			case "b": put_color = CardColor.BLUE; break;
-			case "r": put_color = CardColor.RED; break;
-			case "g": put_color = CardColor.GREEN; break;
-			case "y": put_color = CardColor.YELLOW; break;
+			case "B": put_color = CardColor.BLUE; break;
+			case "R": put_color = CardColor.RED; break;
+			case "G": put_color = CardColor.GREEN; break;
+			case "Y": put_color = CardColor.YELLOW; break;
 			}
 
 			bool change_face = false;
@@ -487,6 +614,7 @@ namespace MAIN
 			case UnoMode.UPGRADE:   return "Upgrade D2 -> WD4";
 			case UnoMode.MULTIPLE:  return "[TODO]";
 			case UnoMode.LIGRETTO:  return "Ligretto";
+			case UnoMode.RANKED:    return "Ranked";
 			default: return "[N/A]";
 			}
 		}
@@ -524,6 +652,8 @@ namespace MAIN
 
 			if (uno.is_active)
 				E.Say(channel, "[UNO] Game ended");
+
+			m_settings.SyncFileContents(); // Save player data
 
 			m_channels.Remove(channel);
 			uno = null; // So that GC works

@@ -4,18 +4,36 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace MAIN {
+	public class SettingType {
+		public virtual bool DeSerialize(string str)
+		{
+			// "str" is never null
+			return false;
+		}
+
+		public virtual string Serialize()
+		{
+			return "<invalid>";
+		}
+	}
+
 	public class Settings {
-		string m_file;
+		readonly string m_file;
 		Dictionary<string, string> m_settings;
 		HashSet<string> m_modified;
 		Settings m_parent;
+		string m_prefix; // To access only certain settings
 
-		public Settings(string filename, Settings parent = null)
+		public Settings(string filename, Settings parent = null, string prefix = "")
 		{
 			m_file = filename;
 			m_settings = new Dictionary<string, string>();
 			m_modified = new HashSet<string>();
 			m_parent = parent;
+			if (prefix.Length > 0)
+				m_prefix = prefix + ".";
+			else
+				m_prefix = "";
 		}
 
 		public string this[string key]
@@ -27,21 +45,44 @@ namespace MAIN {
 		public string Get(string key)
 		{
 			string ret;
-			if (m_settings.TryGetValue(key, out ret))
+			if (m_settings.TryGetValue(m_prefix + key, out ret))
 				return ret;
 			if (m_parent != null)
 				return m_parent.Get(key);
 			return ret;
 		}
 
+		public bool Get<T>(string key, ref T dst) where T : SettingType
+		{
+			string str = Get(key);
+			if (str == null)
+				return false;
+			return dst.DeSerialize(str);
+		}
+
 		public void Set(string key, string value)
 		{
-			// Key must be [A-z_]
-			m_settings[key] = value;
+			key = m_prefix + key;
+			// Key must not contain a space-like character!
+
+			if (value != null)
+				m_settings[key] = value;
+			else
+				m_settings.Remove(key);
+
 			m_modified.Add(key);
 		}
 
-		// Write changes to the settings file, and read in changes
+		public void Set(string key, SettingType value)
+		{
+			Set(key, value.Serialize());
+		}
+
+		// Sync with the settings file
+		//  - Write changes of modified settings
+		//  - Read in changes of unmodified settings
+		//  - Copy & paste text between modified settings
+		// Format "key = value". Obligatory space before '='
 		public bool SyncFileContents()
 		{
 			if (!System.IO.File.Exists(m_file)) {
@@ -82,7 +123,7 @@ namespace MAIN {
 
 				Match match = Regex.Match(
 					text.Substring(i, line_end - i),
-					@"^\s*([A-z_]+)\s*=(.*)");
+					@"^\s*(\S+)\s+=(.*)");
 
 				if (match.Success) {
 					string key = match.Groups[1].Value;
@@ -93,8 +134,8 @@ namespace MAIN {
 
 						m_modified.Remove(key);
 						last_pos = line_end + 1;
-					} else {
-						// Read change from file
+					} else if (key.StartsWith(m_prefix)) {
+						// Read change from file if prefix matches
 						string val = match.Groups[2].Value.Trim();
 						m_settings[key] = val;
 					}

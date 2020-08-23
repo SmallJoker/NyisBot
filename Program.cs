@@ -36,7 +36,7 @@ namespace MAIN
 		#region Init functions
 		public E()
 		{
-			manager = new Manager();
+			manager = new Manager(G.settings["server_name"]);
 
 			address = G.settings["address"].ToLower();
 			port = Utils.toInt(G.settings["port"]);
@@ -117,7 +117,6 @@ namespace MAIN
 						Console.WriteLine(e.ToString());
 						L.Dump("E::FetchChat", query, e.ToString());
 					}
-					manager.SetActiveChannel(null);
 				}
 			}
 			L.Log("E::LoopThread, Disconneted", true);
@@ -221,17 +220,14 @@ namespace MAIN
 
 			#region Handle NickServ + return
 			if (nick == "NickServ" && length >= 3) {
-				// NickServ can send different kinds of answers
-				m_Lua module = (m_Lua)manager.GetModule("Lua");
-
 				if (Utils.isYes(G.settings["nickserv_acc"]) == 1) {
-					if (args[1] == "ACC" && module != null) {
-						module.userstatus_queue[args[0]] = args[2][0] - '0';
+					if (args[1] == "ACC") {
+						manager.ReceivedUserStatus(args[1], args[2][0] - '0');
 						return;
 					}
 				} else {
-					if (args[0] == "STATUS" && module != null) {
-							module.userstatus_queue[args[1]] = args[2][0] - '0';
+					if (args[0] == "STATUS") {
+						manager.ReceivedUserStatus(args[1], args[2][0] - '0');
 						return;
 					}
 				}
@@ -249,7 +245,9 @@ namespace MAIN
 			if (message.Length < 2 || message[0] != '$')
 				return;
 
-			manager.OnUserSay(nick, message, length, ref args);
+			new Thread(delegate () {
+				manager.OnUserSay(nick, message, length, ref args);
+			}).Start();
 		}
 
 		void OnServerMessage(string status, string destination, string content)

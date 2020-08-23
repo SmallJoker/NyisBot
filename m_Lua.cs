@@ -15,12 +15,10 @@ namespace MAIN
 		bool lua_lock;
 
 		Thread lua_thread;
-		public Dictionary<string, int> userstatus_queue;
 
 		public m_Lua(Manager manager) : base("Lua", manager)
 		{
 			lua_timer = new System.Diagnostics.Stopwatch();
-			userstatus_queue = new Dictionary<string, int>();
 		}
 
 		public override void OnUserSay(string nick, string message,
@@ -164,8 +162,6 @@ namespace MAIN
 			string answer_s = new string(answer, 0, pos);
 			if (pos == 0)
 				answer_s = nick + ": <no return text>";
-
-			userstatus_queue.Clear();
 			return answer_s;
 		}
 
@@ -237,29 +233,8 @@ namespace MAIN
 			if (nick == null)
 				return 0;
 
-			if (userstatus_queue.ContainsKey(nick)) {
-				Lua.lua_pushinteger(SE.L, userstatus_queue[nick]);
-				return 1;
-			}
-
-			System.Diagnostics.Stopwatch nickserv_time = new System.Diagnostics.Stopwatch();
-
-			if (Utils.isYes(G.settings["nickserv_acc"]) == 1)
-				E.Say("NickServ", "ACC " + nick);
-			else
-				E.Say("NickServ", "STATUS " + nick);
-
-
-			while (nickserv_time.ElapsedMilliseconds < 1500) {
-				if (userstatus_queue.ContainsKey(nick)) {
-					Lua.lua_pushinteger(SE.L, userstatus_queue[nick]);
-					return 1;
-				}
-
-				Thread.Sleep(100);
-			}
-			userstatus_queue.Remove(nick);
-			return 0;
+			Lua.lua_pushinteger(SE.L, p_manager.GetUserStatus(nick));
+			return 1;
 		}
 	}
 }

@@ -1,6 +1,9 @@
-/* Server connection */
-address = irc.server.cool
-port    = 6697
+/* === Server connection === */
+
+/* Fancy name for use in game data files. No Spaces! */
+server_name = cool_server
+address     = irc.server.cool
+port        = 6697
 
 identifier = IRC bot - Created by Krock, handcrafted. [C#] 2014-2020
 

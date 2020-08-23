@@ -74,7 +74,7 @@ namespace MAIN
 
 	public class Channel
 	{
-		string m_name;
+		readonly string m_name;
 		public Dictionary<string, UserData> users;
 
 		public Channel(string channel_name)
@@ -133,19 +133,29 @@ namespace MAIN
 		#endregion
 	}
 
+	// Each server gets its own manager
 	public class Manager
 	{
+		readonly string m_name;
 		List<Module> m_modules;
 		List<Channel> m_channels;
 		Channel m_tmp_channel;
 		Chatcommand m_chatcommands;
 		string m_active_channel;
+		Dictionary<string, int> m_userstatus_cache;
 
-		public Manager()
+		public Manager(string name)
 		{
+			m_name = name;
 			m_modules = new List<Module>();
 			m_channels = new List<Channel>();
 			m_chatcommands = new Chatcommand();
+			m_userstatus_cache = new Dictionary<string, int>();
+		}
+
+		public string GetName()
+		{
+			return m_name;
 		}
 
 		#region MODULES
@@ -213,7 +223,7 @@ namespace MAIN
 
 			if (channel == null) {
 				// Temporary channel for private messages
-				m_tmp_channel = new Channel(m_active_channel);
+				m_tmp_channel = new Channel("<invalid>");
 				channel = m_tmp_channel;
 				if (!channel.IsPrivate()) {
 					L.Log("Manager::GetChannel() Channel not found: " + m_active_channel +
@@ -282,6 +292,7 @@ namespace MAIN
 				module.OnUserLeave(nick);
 
 			chan.users.Remove(nick);
+			m_userstatus_cache.Remove(nick);
 		}
 
 		public void OnUserRename(string nick, string hostmask, string old_nick)
@@ -294,6 +305,7 @@ namespace MAIN
 				channel.users.Remove(old_nick);
 			}
 
+			m_userstatus_cache.Remove(old_nick);
 			foreach (Module module in m_modules)
 				module.OnUserRename(nick, old_nick);
 		}
@@ -319,5 +331,45 @@ namespace MAIN
 			m_chatcommands.Run(nick, message);
 		}
 		#endregion
+
+		/// <summary>
+		/// Indicates the authentication level of the nick
+		/// !! Invalidates the current channel !!
+		/// </summary>
+		/// <returns>
+		/// 3 = logged in
+		/// 2 = recognized (ACCESS)
+		/// 1 = not logged in
+		/// 0 = no such account / error
+		/// </returns>
+		public int GetUserStatus(string nick)
+		{
+			SetActiveChannel(null);
+
+			if (!m_userstatus_cache.ContainsKey(nick)) {
+				// Send information request
+				// See also: Program.cs -> OnUserSay()
+				if (Utils.isYes(G.settings["nickserv_acc"]) == 1)
+					E.Say("NickServ", "ACC " + nick);
+				else
+					E.Say("NickServ", "STATUS " + nick);
+			}
+
+			int status = 0;
+
+			var timer = new System.Diagnostics.Stopwatch();
+			while (timer.ElapsedMilliseconds < 1500) {
+				if (m_userstatus_cache.TryGetValue(nick, out status))
+					break;
+
+				System.Threading.Thread.Sleep(100);
+			}
+			return status;
+		}
+
+		public void ReceivedUserStatus(string nick, int val)
+		{
+			m_userstatus_cache[nick] = val;
+		}
 	}
 }
