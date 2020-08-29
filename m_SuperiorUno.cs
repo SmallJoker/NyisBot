@@ -140,7 +140,10 @@ namespace MAIN
 
 				p.m_elo += (int)delta;
 				p.m_streak = 0;
-				p.m_losses++;
+				if (players.Count == 2) {
+					// Only for last man standing
+					p.m_losses++;
+				}
 			}
 		}
 
@@ -281,6 +284,7 @@ namespace MAIN
 
 		public override void CleanStage()
 		{
+			m_settings.SyncFileContents();
 			m_channels.Clear();
 		}
 
@@ -623,12 +627,13 @@ namespace MAIN
 				return;
 
 			// No specific player. Take current one
+			var current = uno.GetPlayer();
 			if (player == null)
-				player = uno.GetPlayer();
+				player = current;
 
 			var sb = new System.Text.StringBuilder();
 			sb.Append("[UNO] " + uno.current_player);
-			sb.Append(" (" + player.cards.Count + " cards) - ");
+			sb.Append(" (" + current.cards.Count + " cards) - ");
 			sb.Append("Top card: " + FormatCards(new List<Card> { uno.top_card }));
 			if (uno.draw_count > 0)
 				sb.Append("- draw count: " + uno.draw_count);
