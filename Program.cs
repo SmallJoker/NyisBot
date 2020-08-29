@@ -246,7 +246,12 @@ namespace MAIN
 				return;
 
 			new Thread(delegate () {
-				manager.OnUserSay(nick, message, length, ref args);
+				try {
+					manager.OnUserSay(nick, message, length, ref args);
+				} catch (Exception e) {
+					Console.WriteLine(e.ToString());
+					L.Dump("E::OnUserSay", message, e.ToString());
+				}
 			}).Start();
 		}
 

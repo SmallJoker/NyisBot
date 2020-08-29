@@ -316,7 +316,11 @@ namespace MAIN
 			foreach (Module module in m_modules)
 				module.OnUserSay(nick, message, length, ref args);
 
-			UserData user = GetChannel().GetUserData(nick);
+			Channel chan = GetChannel();
+			UserData user = chan != null ? chan.GetUserData(nick) : null;
+			if (user == null)
+				return; // Left channel or kicked player
+
 			// Command shortcuts: "$uno p" becomes "$p" unless escaped using "$$"
 			if (user.cmd_scope != null && message[1] != '$') {
 				if (user.cmd_scope.Run(nick, message.Substring(1)))
