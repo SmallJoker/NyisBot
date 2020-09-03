@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Thread = System.Threading.Thread;
 
 namespace MAIN
 {
@@ -139,9 +140,8 @@ namespace MAIN
 		readonly string m_name;
 		List<Module> m_modules;
 		List<Channel> m_channels;
-		Channel m_tmp_channel;
 		Chatcommand m_chatcommands;
-		string m_active_channel;
+		Dictionary<int, Channel> m_active_channel;
 		Dictionary<string, int> m_userstatus_cache;
 
 		public Manager(string name)
@@ -150,6 +150,8 @@ namespace MAIN
 			m_modules = new List<Module>();
 			m_channels = new List<Channel>();
 			m_chatcommands = new Chatcommand();
+			// May also contain temporary channels
+			m_active_channel = new Dictionary<int, Channel>();
 			m_userstatus_cache = new Dictionary<string, int>();
 		}
 
@@ -208,40 +210,38 @@ namespace MAIN
 
 		public Channel GetChannel(string name)
 		{
-			return m_channels.Find(item => item.GetName() == name);
+			var channel = m_channels.Find(item => item.GetName() == name);
+			if (channel != null)
+				return channel;
+
+			// Recycle temporary channels
+			foreach (var item in m_active_channel) {
+				if (item.Value.GetName() == name)
+					return item.Value;
+			}
+			return null;
 		}
 
 		/// <returns>The currently active channel</returns>
 		public Channel GetChannel()
 		{
-			if (m_active_channel == null)
-				return null;
+			var tid = Thread.CurrentThread.ManagedThreadId;
+			Channel channel;
+			if (m_active_channel.TryGetValue(tid, out channel))
+				return channel;
 
-			Channel channel = GetChannel(m_active_channel);
-			if (channel == null)
-				channel = m_tmp_channel;
-
-			if (channel == null) {
-				// Temporary channel for private messages
-				m_tmp_channel = new Channel("<invalid>");
-				channel = m_tmp_channel;
-				if (!channel.IsPrivate()) {
-					L.Log("Manager::GetChannel() Channel not found: " + m_active_channel +
-						". Creating temporary object.", true);
-				}
-			}
-			return channel;
+			return null;
 		}
 
 		public void ClearChannels()
 		{
-			SetActiveChannel(null);
+			m_active_channel.Clear();
 			m_channels.Clear();
 		}
 
-		public void QuitChannel(string channel_name)
+		public void QuitChannel()
 		{
-			Channel channel = GetChannel(channel_name);
+			Channel channel = GetChannel();
 			if (channel == null)
 				return;
 
@@ -252,13 +252,62 @@ namespace MAIN
 			foreach (string nick in nicks_copy)
 				OnUserLeave(nick);
 
+			// Clean up running threads assigned to this channel
+			var proc = System.Diagnostics.Process.GetCurrentProcess();
+			foreach (Thread th in proc.Threads) {
+				Channel chan;
+				if (th == null)
+					continue;
+
+				int tid = th.ManagedThreadId;
+				if (!m_active_channel.TryGetValue(tid, out chan))
+					continue;
+
+				if (chan == channel) {
+					if (!th.Join(500))
+						th.Abort(); // Force
+					m_active_channel.Remove(tid);
+				}
+			}
 			m_channels.Remove(channel);
 		}
 
+		/// <summary>Changes the per-thread channel</summary>
+		/// <param name="channel_name">Channel name: null clears garbage</param>
 		public void SetActiveChannel(string channel_name)
 		{
-			m_tmp_channel = null;
-			m_active_channel = channel_name;
+			var tid = Thread.CurrentThread.ManagedThreadId;
+			if (channel_name == null) {
+				m_active_channel.Remove(tid);
+				return;
+			}
+
+			Channel channel = GetChannel(channel_name);
+			if (channel == null) {
+				channel = new Channel(channel_name);
+				if (!channel.IsPrivate()) {
+					L.Log("Manager::SetActiveChannel channel '" + channel_name +
+						"' not found! Creating dummy channel.");
+				}
+			}
+			m_active_channel[tid] = channel;
+		}
+
+		/// <summary>Creates a new thread with exception handling</summary>
+		public Thread Fork(string log_id, string log_trace, Action func)
+		{
+			Channel channel = GetChannel();
+			var th = new Thread(delegate() {
+				SetActiveChannel(channel.GetName());
+				try {
+					func();
+				} catch (Exception e) {
+					L.Dump("Thread " + log_id, log_trace + " @" + channel.GetName(), e.ToString());
+				}
+				SetActiveChannel(null);
+			});
+			th.Start();
+			return th;
 		}
 		#endregion
 
@@ -338,7 +387,6 @@ namespace MAIN
 
 		/// <summary>
 		/// Indicates the authentication level of the nick
-		/// !! Invalidates the current channel !!
 		/// </summary>
 		/// <returns>
 		/// 3 = logged in
@@ -348,8 +396,6 @@ namespace MAIN
 		/// </returns>
 		public int GetUserStatus(string nick)
 		{
-			SetActiveChannel(null);
-
 			if (!m_userstatus_cache.ContainsKey(nick)) {
 				// Send information request
 				// See also: Program.cs -> OnUserSay()
@@ -361,12 +407,11 @@ namespace MAIN
 
 			int status = 0;
 
-			var timer = new System.Diagnostics.Stopwatch();
-			while (timer.ElapsedMilliseconds < 1500) {
+			for (int n = 0; n < 15; ++n) {
 				if (m_userstatus_cache.TryGetValue(nick, out status))
 					break;
 
-				System.Threading.Thread.Sleep(100);
+				Thread.Sleep(100);
 			}
 			return status;
 		}

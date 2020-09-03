@@ -3,8 +3,8 @@
 public class L
 {
 	static string filename = "log_" + DateTime.Now.ToString("yyyyMMdd") + ".txt";
-	static System.IO.TextWriter wr;
-	static bool wr_locked = false;
+	static System.IO.FileStream fs;
+	static System.Threading.Mutex mt = new System.Threading.Mutex();
 
 	public static void Log(string s, bool error = false)
 	{
@@ -33,24 +33,32 @@ public class L
 
 	public static void Dump(string function, string trace, string content)
 	{
-		if (wr == null)
-			wr = new System.IO.StreamWriter(filename, true, MAIN.E.enc);
+		if (fs == null) {
+			fs = new System.IO.FileStream(filename,
+				System.IO.FileMode.Append,
+				System.IO.FileAccess.Write,
+				System.IO.FileShare.Read);
+		}
 
-		while (wr_locked)
-			System.Threading.Thread.Sleep(10);
-	
-		wr_locked = true;
+		mt.WaitOne();
 
 		string time = DateTime.Now.ToString("T");
-		wr.WriteLine("[" + time + "] Starting dump of: " + function);
+		WriteLine("[" + time + "] Dump start: " + function);
 		if (trace != null && trace != "")
-			wr.WriteLine("### Trace: " + trace);
-		wr.WriteLine(content);
-		wr.WriteLine("### Dump end (" + content.Length + " characters)");
-		wr.Flush();
+			WriteLine("### Trace: " + trace);
+		WriteLine(content);
+		WriteLine("### Dump end (" + content.Length + " characters)");
+		fs.Flush();
 
-		wr_locked = false;
-		Log(function + " failed", true);
+		Console.WriteLine(content);
+		mt.ReleaseMutex();
+	}
+
+	static void WriteLine(string text)
+	{
+		byte[] data = System.Text.Encoding.UTF8.GetBytes(text);
+		fs.Write(data, 0, data.Length);
+		fs.WriteByte((byte)'\n');
 	}
 }
 

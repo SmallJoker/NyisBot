@@ -14,8 +14,6 @@ namespace MAIN
 		System.Diagnostics.Stopwatch lua_timer;
 		bool lua_lock;
 
-		Thread lua_thread;
-
 		public m_Lua(Manager manager) : base("Lua", manager)
 		{
 			lua_timer = new System.Diagnostics.Stopwatch();
@@ -30,23 +28,18 @@ namespace MAIN
 			if (lua_timer.IsRunning)
 				return;
 
-			string str = "";
-			for (int i = 1; i < length; i++) {
-				if (i + 1 < length)
-					str += args[i] + ' ';
-				else
-					str += args[i];
-			}
+			string str = String.Join(" ", args, 1, length - 1);
+
 			if (str.Length < 5) {
 				E.Notice(nick, "Too short input text.");
 				return;
 			}
-			Channel channel = p_manager.GetChannel();
 			lua_timer.Start();
-			lua_thread = new Thread(delegate () {
-				channel.Say(LuaRun(nick, channel, str));
-			});
-			lua_thread.Start();
+
+			// Optional p_manager.Fork() because this
+			// OnUserSay already runs within its own thread
+			Channel channel = p_manager.GetChannel();
+			channel.Say(LuaRun(nick, channel, str));
 		}
 
 		string LuaRun(string nick, Channel chan, string message)

@@ -114,7 +114,6 @@ namespace MAIN
 						FetchChat(query);
 					} catch (Exception e) {
 						Console.WriteLine(query);
-						Console.WriteLine(e.ToString());
 						L.Dump("E::FetchChat", query, e.ToString());
 					}
 				}
@@ -245,14 +244,9 @@ namespace MAIN
 			if (message.Length < 2 || message[0] != '$')
 				return;
 
-			new Thread(delegate () {
-				try {
-					manager.OnUserSay(nick, message, length, ref args);
-				} catch (Exception e) {
-					Console.WriteLine(e.ToString());
-					L.Dump("E::OnUserSay", message, e.ToString());
-				}
-			}).Start();
+			manager.Fork("E::OnUserSay", message, delegate() {
+				manager.OnUserSay(nick, message, length, ref args);
+			});
 		}
 
 		void OnServerMessage(string status, string destination, string content)
@@ -272,12 +266,6 @@ namespace MAIN
 			#region Nicklist
 			case "353": {
 					manager.SetActiveChannel(destination);
-					Channel chan = manager.GetChannel();
-
-					if (chan == null) {
-						L.Log("E::OnServerMessage, Channel not added yet: " + destination);
-						return;
-					}
 
 					for (int i = 0; i < content.Length; ++i) {
 						int end_pos = content.IndexOf(' ', i);
@@ -329,7 +317,6 @@ namespace MAIN
 		void OnUserEvent(string nick, string hostmask, string status, string channel)
 		{
 			L.Log('[' + status + "] " + channel + "\t : " + nick);
-			manager.SetActiveChannel(channel);
 
 			if (status == "JOIN") {
 				Channel chan = manager.GetChannel(channel);
@@ -338,14 +325,17 @@ namespace MAIN
 					chan = new Channel(channel);
 					manager.UnsafeGetChannels().Add(chan);
 				}
+
+				manager.SetActiveChannel(channel);
 				manager.OnUserJoin(nick, hostmask);
 				return;
 			}
 
 			if (status == "PART" || status == "KICK") {
+				manager.SetActiveChannel(channel);
 				if (nick == G.settings["nickname"]) {
 					// Bot leaves
-					manager.QuitChannel(channel);
+					manager.QuitChannel();
 					return;
 				}
 
