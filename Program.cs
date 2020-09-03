@@ -548,7 +548,6 @@ namespace MAIN
 		{
 			send("PART " + room);
 			L.Log("<< PART " + room);
-			manager.QuitChannel(room);
 		}
 
 		void NickAuth(string name)

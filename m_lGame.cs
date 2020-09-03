@@ -101,6 +101,7 @@ namespace MAIN
 
 			var sub = p_manager.GetChatcommand().Add("$lgame");
 			m_subcommand = sub;
+
 			sub.SetMain(delegate (string nick, string message) {
 				var channel = p_manager.GetChannel();
 				channel.Say(nick + ": Available subcommands: " + sub.CommandsToString() +

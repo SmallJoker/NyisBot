@@ -41,9 +41,26 @@ namespace MAIN
 			var channel = p_manager.GetChannel();
 			var cmd = p_manager.GetChatcommand();
 
-			channel.Say(nick + ": [$lua/$] <text../help()>, $c <text..>, " +
-				cmd.CommandsToString() + ". See also: " +
-				"https://github.com/SmallJoker/NyisBot/blob/master/HELP.txt");
+			string part = Chatcommand.GetNext(ref message);
+			if (part == "") {
+				channel.Say(nick + ": [$lua/$] <text../help()>, $c <text..>, " +
+					cmd.CommandsToString() + ". See also: " +
+					"https://github.com/SmallJoker/NyisBot/blob/master/HELP.txt");
+				return;
+			}
+
+			part = "$" + part; // Add cmd prefix
+			do {
+				cmd = cmd.GetSubCmdGroup(part);
+				if (cmd == null) {
+					channel.Say(nick + ": No subcommands found for '" + part + "'.");
+					return;
+				}
+				part = Chatcommand.GetNext(ref message);
+			} while (part != "");
+
+			// The main command should display information only
+			cmd.Run(nick, "");
 		}
 
 		void Cmd_c(string nick, string message)

@@ -29,14 +29,25 @@ namespace MAIN
 			return cmd;
 		}
 
+		// Shorthand for simple subcommands
 		public void Add(string subcommand, CmdAction action)
 		{
-			Add(subcommand).m_run = action;
+			Add(subcommand).SetMain(action);
 		}
 
 		public void SetMain(CmdAction action)
 		{
 			m_run = action;
+		}
+
+		public Chatcommand GetSubCmdGroup(string subcommand)
+		{
+			Chatcommand cmd;
+			if (m_subcommands.TryGetValue(subcommand, out cmd)
+					&& cmd.m_subcommands.Count > 0)
+				return cmd;
+
+			return null;
 		}
 
 		/// <returns>Whether the command was handled</returns>
