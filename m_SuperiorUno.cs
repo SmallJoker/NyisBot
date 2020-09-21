@@ -508,7 +508,9 @@ namespace MAIN
 
 			if (uno.draw_count > 0) {
 				bool ok = false;
-				if (put_face == "D2" && uno.CheckMode(UnoMode.STACK_D2))
+				if (put_face == "D2" &&
+						put_face == uno.top_card.Value && // No downgrade
+						uno.CheckMode(UnoMode.STACK_D2))
 					ok = true;
 				else if (put_face == "WD4" &&
 						 put_face == uno.top_card.Value &&
