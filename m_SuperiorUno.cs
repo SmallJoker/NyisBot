@@ -45,22 +45,31 @@ namespace MAIN
 		}
 
 		#region INGAME
-		public List<Card> DrawCards(int count)
+		public List<Card> DrawCards(int count, int max_special = -1)
 		{
 			var drawn = new List<Card>();
 			var card_colors = Enum.GetValues(typeof(CardColor));
 			var card_faces = m_SuperiorUno.card_faces.ToArray();
 
-			while ((count--) > 0) {
+			while (count > 0) {
 				CardColor color = (CardColor)Utils.RandomIn(card_colors);
 				string face = (string)Utils.RandomIn(card_faces);
 
-				if (face.Contains("W"))
+				if (face.Contains("W")) {
 					color = CardColor.NONE;
-				else if (color == CardColor.NONE)
-					color = CardColor.RED; // HACC
+
+					// Limit black cards
+					if (max_special == 0)
+						continue; // Retry
+					if (max_special > 0)
+						max_special--;
+
+				} else if (color == CardColor.NONE) {
+					continue; // Retry
+				}
 
 				drawn.Add(new Card(color, face));
+				count--;
 			}
 
 			cards.AddRange(drawn);
@@ -417,7 +426,7 @@ namespace MAIN
 			}
 
 			foreach (UnoPlayer player in uno.players)
-				player.DrawCards(11);
+				player.DrawCards(11, 2);
 
 			uno.top_card = nplayer.cards[0];
 			uno.is_active = true;
