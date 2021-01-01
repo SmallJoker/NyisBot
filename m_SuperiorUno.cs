@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MAIN
 {
@@ -120,7 +121,9 @@ namespace MAIN
 			return m_wins + " " + m_losses + " " + m_elo + " " + m_streak;
 		}
 
-		public void Win(List<UnoPlayer> players)
+		public int GetElo() { return m_elo; }
+
+		public void Win(List<UnoPlayer> players, int initial_player_count)
 		{
 			int elo_losers = 0;
 			foreach (UnoPlayer p in players) {
@@ -135,8 +138,10 @@ namespace MAIN
 				m_delta += (int)delta;
 
 				m_elo += (int)delta;
-				m_streak++;
-				m_wins++;
+				if (initial_player_count == players.Count) {
+					m_streak++;
+					m_wins++;
+				}
 			}
 
 			// Handle losers
@@ -163,16 +168,16 @@ namespace MAIN
 					m_losses + " Losses, Streak " + m_streak;
 			}
 			string val = m_elo.ToString();
-			string inside = "";
+			string parenthese_text = "";
 			if (m_delta != 0)
-				inside = m_delta.ToString("+0;-#");
+				parenthese_text = m_delta.ToString("+0;-#");
 			if (m_streak > 1) {
-				if (inside.Length > 0)
-					inside += ", ";
-				inside += "Streak " + m_streak;
+				if (parenthese_text.Length > 0)
+					parenthese_text += ", ";
+				parenthese_text += "Streak " + m_streak;
 			}
-			if (inside.Length > 0)
-				return val + " (" + inside + ")";
+			if (parenthese_text.Length > 0)
+				return val + " (" + parenthese_text + ")";
 			return val;
 		}
 		#endregion
@@ -186,6 +191,7 @@ namespace MAIN
 		public Card top_card;
 		public int draw_count;
 		public byte modes { get; private set; }
+		public int initial_player_count { get; private set; }
 		Settings m_settings;
 
 		public UnoChannel(byte modes, Settings settings)
@@ -218,6 +224,13 @@ namespace MAIN
 			current_player = players[index].name;
 		}
 
+		public void AddPlayer(UnoPlayer player)
+		{
+			players.Add(player);
+			current_player = player.name;
+			initial_player_count = players.Count;
+		}
+
 		public bool RemovePlayer(Channel channel, string nick)
 		{
 			UnoPlayer player = GetPlayer(nick);
@@ -237,7 +250,8 @@ namespace MAIN
 				string log = player.name + " finishes the game and gains "
 					+ score + " points";
 				if (CheckMode(UnoMode.RANKED)) {
-					player.Win(players);
+					player.Win(players, initial_player_count);
+
 					foreach (UnoPlayer up in players)
 						m_settings.Set(up.name, up);
 
@@ -249,8 +263,8 @@ namespace MAIN
 			}
 
 			players.Remove(player);
-			player = null; // So that GC works
-			GC.Collect();
+			if (!is_active)
+				initial_player_count = players.Count;
 			return true;
 		}
 	}
@@ -277,6 +291,7 @@ namespace MAIN
 			});
 
 			cmd.Add("elo", Cmd_Elo);
+			cmd.Add("elotop", Cmd_EloTop);
 			cmd.Add("join", Cmd_Join);
 			cmd.Add("leave", Cmd_Leave);
 			cmd.Add("deal", Cmd_Deal);
@@ -339,6 +354,30 @@ namespace MAIN
 				channel.Say("[UNO] " + who + ": " + player.ShowElo(true));
 		}
 
+		void Cmd_EloTop(string nick, string message)
+		{
+			Channel channel = p_manager.GetChannel();
+
+			var leaderboard = new Dictionary<string, int>();
+			var dummy = new UnoPlayer(null, null);
+			foreach (string key in m_settings.IterateKeys()) {
+				if (!m_settings.Get(key, ref dummy))
+					continue;
+				leaderboard.Add(key, dummy.GetElo());
+			}
+			int n = 0;
+			string val = "";
+			foreach (var record in leaderboard.OrderByDescending(i => i.Value)) {
+				if (n > 0)
+					val += ", ";
+
+				val += record.Key + " (" + record.Value + ")";
+				if (++n == 5)
+					break;
+			}
+			channel.Say("[UNO] Top 5 leaderboard: " + val);
+		}
+
 		void Cmd_Join(string nick, string message)
 		{
 			Channel channel = p_manager.GetChannel();
@@ -379,9 +418,7 @@ namespace MAIN
 
 			var player = new UnoPlayer(nick, user);
 			m_settings.Get(nick, ref player);
-			uno.players.Add(player);
-
-			uno.current_player = nick;
+			uno.AddPlayer(player);
 
 			// Human readable modes
 			var modes_list = new List<string>();

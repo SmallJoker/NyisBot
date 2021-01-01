@@ -60,6 +60,14 @@ namespace MAIN {
 			return dst.DeSerialize(str);
 		}
 
+		public IEnumerable<string> IterateKeys()
+		{
+			foreach (KeyValuePair<string, string> kv in m_settings) {
+				if (kv.Key.StartsWith(m_prefix))
+					yield return kv.Key.Substring(m_prefix.Length);
+			}
+		}
+
 		public void Set(string key, string value)
 		{
 			key = m_prefix + key;
